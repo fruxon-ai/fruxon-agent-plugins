@@ -1,0 +1,17 @@
+{
+  "name": "fruxon",
+  "version": "0.14.0",
+  "description": "Build, run, and debug Fruxon agents from Claude Code through the fruxon CLI",
+  "author": {
+    "name": "Fruxon",
+    "url": "https://github.com/fruxon-ai"
+  },
+  "homepage": "https://github.com/fruxon-ai/fruxon-claude-plugin",
+  "repository": "https://github.com/fruxon-ai/fruxon-claude-plugin",
+  "license": "MIT",
+  "keywords": [
+    "fruxon",
+    "agents",
+    "cli"
+  ]
+}

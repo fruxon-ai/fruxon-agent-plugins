@@ -1,0 +1,49 @@
+name: Sync skills
+
+# Pull the skills from the latest fruxon release on PyPI and commit them
+# when they changed. Runs daily so a new SDK release reaches plugin users
+# without anyone touching this repo; run it by hand after a release to
+# ship sooner.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'fruxon version to sync (blank = latest)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Sync from PyPI
+        run: python scripts/sync_skills.py ${{ inputs.version }}
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "Already up to date."
+            exit 0
+          fi
+          version=$(python -c "import json;print(json.load(open('plugins/fruxon/.claude-plugin/plugin.json'))['version'])")
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add plugins/fruxon
+          git commit -m "Sync skills from fruxon $version"
+          git push

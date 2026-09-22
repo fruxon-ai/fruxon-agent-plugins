@@ -1,0 +1,18 @@
+{
+  "name": "fruxon",
+  "owner": {
+    "name": "Fruxon",
+    "url": "https://github.com/fruxon-ai"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for the Fruxon platform"
+  },
+  "plugins": [
+    {
+      "name": "fruxon",
+      "source": "./plugins/fruxon",
+      "description": "Build, run, and debug Fruxon agents from Claude Code through the fruxon CLI",
+      "category": "development"
+    }
+  ]
+}
