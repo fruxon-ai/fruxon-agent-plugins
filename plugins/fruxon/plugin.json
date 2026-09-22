@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "fruxon",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "Build, run, and debug Fruxon agents through the fruxon CLI",
   "author": {
     "name": "Fruxon",

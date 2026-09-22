@@ -22,6 +22,8 @@ signals (true if any is set):
 
 - `FRUXON_AGENT_MODE=1` — explicit opt-in
 - `CLAUDECODE=1` — set by Claude Code in spawned shells
+- `CODEX_THREAD_ID` (any value) or `CODEX_CI=1` — set by Codex in
+  spawned shells
 - `CI=true` / `CI=1` — universal automation marker
 
 In agent mode the CLI:

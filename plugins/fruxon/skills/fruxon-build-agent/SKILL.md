@@ -319,8 +319,8 @@ fruxon agents draft evaluate <agent> --dataset <uuid>   # confirm + run
 ```
 **Expensive — every dataset sample runs the full flow once** (LLM
 tokens + integration calls). The CLI quotes the sample count and
-asks for confirmation; under `FRUXON_AGENT_MODE` / `CLAUDECODE` /
-`CI` it refuses to run without an explicit `--yes`. Returns an
+asks for confirmation; in agent mode (`FRUXON_AGENT_MODE` /
+`CLAUDECODE` / Codex / `CI`) it refuses to run without an explicit `--yes`. Returns an
 evaluation run id immediately — poll
 `GET .../agents/<agent>/evaluationRuns/<run-id>` for the verdict
 (`score`, `deploymentRecommendation`, per-sample comparisons). The
