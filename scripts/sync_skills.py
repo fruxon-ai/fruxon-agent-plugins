@@ -9,8 +9,8 @@ Usage:
     python scripts/sync_skills.py            # latest release
     python scripts/sync_skills.py 0.14.0     # a specific release
 
-Rewrites plugins/fruxon/skills/ and sets plugin.json's version to the
-fruxon release. Standard library only.
+Rewrites plugins/fruxon/skills/ and sets both plugin manifests' version to
+the fruxon release. Standard library only.
 """
 
 from __future__ import annotations
@@ -26,7 +26,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "fruxon"
 SKILLS = PLUGIN / "skills"
-MANIFEST = PLUGIN / ".claude-plugin" / "plugin.json"
+# Claude Code reads .claude-plugin/plugin.json; Codex reads the root plugin.json.
+MANIFESTS = (PLUGIN / ".claude-plugin" / "plugin.json", PLUGIN / "plugin.json")
 PREFIX = "fruxon/skills/"
 
 
@@ -54,9 +55,10 @@ def main() -> None:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(wheel.read(name))
 
-    manifest = json.loads(MANIFEST.read_text())
-    manifest["version"] = release
-    MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
+    for path in MANIFESTS:
+        manifest = json.loads(path.read_text())
+        manifest["version"] = release
+        path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
     print(f"synced {len(members)} skills from fruxon {release}")
 
 

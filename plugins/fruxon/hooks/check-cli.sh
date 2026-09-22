@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# SessionStart hook: tell Claude when the fruxon CLI is missing or older
+# SessionStart hook: tell the agent when the fruxon CLI is missing or older
 # than the release these skills were synced from. Silent when all is well,
-# so it costs no context in the common case.
+# so it costs no context in the common case. Shared by Claude Code
+# (hooks.json, CLAUDE_PLUGIN_ROOT) and Codex (codex-hooks.json, PLUGIN_ROOT).
 
-plugin_version=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" | head -1)
+root="${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}}"
+plugin_version=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$root/plugin.json" | head -1)
 
 if ! command -v fruxon >/dev/null 2>&1; then
   echo "The fruxon plugin is enabled but the fruxon CLI is not on PATH. Before running any fruxon command, ask the user to install it: \`uv tool install fruxon\` (or \`pipx install fruxon\`), then \`fruxon login\`."

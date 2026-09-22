@@ -1,0 +1,30 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "fruxon",
+  "version": "0.14.0",
+  "description": "Build, run, and debug Fruxon agents through the fruxon CLI",
+  "author": {
+    "name": "Fruxon",
+    "url": "https://github.com/fruxon-ai"
+  },
+  "homepage": "https://github.com/fruxon-ai/fruxon-agent-plugins",
+  "repository": "https://github.com/fruxon-ai/fruxon-agent-plugins",
+  "license": "MIT",
+  "keywords": [
+    "fruxon",
+    "agents",
+    "cli"
+  ],
+  "extensions": {
+    "com.openai": {
+      "hooks": "./hooks/codex-hooks.json",
+      "interface": {
+        "displayName": "Fruxon",
+        "shortDescription": "Build, run, and debug Fruxon agents",
+        "developerName": "Fruxon",
+        "category": "Coding",
+        "websiteURL": "https://fruxon.com"
+      }
+    }
+  }
+}
