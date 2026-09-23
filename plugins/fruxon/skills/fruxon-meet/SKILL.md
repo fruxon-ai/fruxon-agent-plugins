@@ -115,10 +115,10 @@ Don't guess; discover.
 
 ## When to load other Fruxon guides
 Run `fruxon guides show <id>`:
-- **fruxon-agent-mode** — agent / CI driver contract: JSON output
-  defaults, NDJSON streams, typed exit codes, structured error
-  envelopes, interactive guards. **Load this first when an AI agent
-  is driving the CLI.**
+- **fruxon-agent-mode** — the CLI's machine contract: typed exit
+  codes, the error envelope, `--yes` guards, and the JSON / NDJSON
+  output shapes. Load it when a command fails or refuses, or when you
+  parse a stream.
 - **fruxon-build-agent** — the build-an-agent loop end-to-end.
 - **fruxon-create-integration** — bootstrapping a brand-new
   integration (with API or Python tools) from scratch.

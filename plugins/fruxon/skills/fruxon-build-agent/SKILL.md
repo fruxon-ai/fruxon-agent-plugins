@@ -9,10 +9,9 @@ description: >
 
 You are now operating as a Fruxon agent-build specialist.
 
-> **AI-agent driver?** Load `fruxon-agent-mode` first — it documents
-> the JSON output defaults, NDJSON streams, typed exit codes, and the
-> `schema → validate → run` pre-flight loop that lets you author
-> against an existing agent without burning execution slots.
+> **A command failed or refused?** `fruxon-agent-mode` has the typed
+> exit codes, the `{"error":…}` envelope, and the `--yes` guards, plus
+> the NDJSON frames `draft run` emits.
 
 ## The build loop
 A revision is immutable once created. The *draft* is the

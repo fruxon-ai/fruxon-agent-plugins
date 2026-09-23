@@ -1,19 +1,21 @@
 ---
 name: fruxon-agent-mode
-displayName: Drive Fruxon from an AI agent
+displayName: Read fruxon's output and recover from errors
 description: >
-  How to drive the fruxon CLI from an AI-agent / LLM driver (Claude
-  Code, Cursor, custom orchestrators) and from CI. Documents the
-  agent-mode contract end-to-end: JSON outputs, NDJSON streams, typed
-  exit codes, structured error envelopes, and the schema → validate →
-  run authoring loop. Load this first when an agent is driving the
-  CLI.
+  The fruxon CLI's machine contract: what its exit codes (2, 10-16)
+  mean, the {"error":{...}} envelope on stderr, commands that refuse
+  without --yes (exit 16), and the JSON / NDJSON shapes that `agents
+  draft run`, `agents sandbox stream`, `agents sandbox test`, and
+  `agents tests watch` emit. Load when a fruxon command fails or
+  refuses, when you need to parse one of those streams, or when
+  scripting the CLI from CI.
 ---
 
-You are now operating as an AI-agent driver of the `fruxon` CLI. This
-guide is the contract you can rely on — every behavior described here
-is tested and stable. When in doubt, prefer the commands and shapes
-documented here over inferring from `--help` text.
+This is the contract the `fruxon` CLI keeps with a program driving it:
+how to read what a command returns, and how to recover when it fails.
+Every behavior here is tested and stable; prefer it over inferring from
+`--help` text. For *what to do* — build an agent, debug a run, wire an
+integration — load the task guides listed at the end.
 
 ## Agent mode — what it is, how it's detected
 
@@ -35,15 +37,104 @@ In agent mode the CLI:
 - Refuses any path that would block on stdin (browser login, `--edit`,
   missing `--yes`) with a typed exit code instead of hanging
 
+## Exit codes — typed, stable, sufficient for retry logic
+
+Every failure classifies into one of these:
+
+| Code | Slug | Meaning |
+|---:|---|---|
+| 0 | — | Success |
+| 1 | `generic` | Unclassified failure (legacy paths, user-cancel) |
+| 2 | `usage` | Parse error — unknown flag, missing argument, unknown command, a group invoked with no subcommand. At every depth, including a bad flag on `fruxon` itself. Never a crash report. |
+| 10 | `auth_required` | 401/403, no credentials, missing scope |
+| 11 | `not_found` | 404 — the agent / integration / tool / key doesn't exist |
+| 12 | `validation` | 400/422, bad flag value, malformed body, pre-flight failed |
+| 13 | `conflict` | 409 — draft moved, version mismatch |
+| 14 | `server_error` | 5xx, mid-stream server failure |
+| 15 | `network_error` | Couldn't reach the API |
+| 16 | `interactive_required` | A blocking prompt was hit in agent mode |
+
+A driver branching retry/abort decisions should match on these
+numbers, not on prose. The codes are picked outside Python's (0/1/2)
+and shell's (126+) common range so they don't collide.
+
+## Error envelope — every failure speaks JSON
+
+In agent mode, every error path emits a single JSON line on **stderr**
+(your stdout stays reserved for the command's primary output):
+
+```json
+{"error":{"code":"auth_required","message":"No workspace found.","exit_code":10,"hint":"Run fruxon login --workspace <id>..."}}
+```
+
+Fields are stable across releases. `code` is the slug from the exit-
+code table above. `message` is plain text — Rich markup is stripped.
+`hint` may be absent when there's no actionable next step. To recover,
+read stderr's last JSON line on non-zero exit.
+
+## Interactive guards — what to do when you hit one
+
+These paths block on a human under normal use; in agent mode they
+fail fast with exit `16` (`interactive_required`) and a hint naming
+the bypass flag.
+
+| Path | Bypass |
+|---|---|
+| `fruxon login` (no key) | Pass `--token $FRUXON_TOKEN` |
+| `fruxon agents draft run --edit` | Pass the value via `-p key=value` or `--params file.json` |
+| `keys delete` (no --yes) | Pass `--yes` |
+| `agents tests delete` (no --yes) | Pass `--yes` |
+| `agents budget delete` (no --yes) | Pass `--yes` |
+| `agents draft evaluate` (no --yes) | Pass `--yes` — it costs real money |
+| `agents approvals respond` / `cancel` (no --yes) | Pass `--yes` — **but stop first.** This responds to a *human-in-the-loop* gate; a response can run the gated tool. Only auto-`--yes` if the human you're acting for explicitly told you to approve/reject this request. Defaulting to approve defeats the gate. |
+| `agents memory forget-subject` (no --yes) | Pass `--yes` — it irreversibly deletes a subject's memories (GDPR forget). |
+| `triggers fire` (no --yes) | Pass `--yes` — it runs the bound agent(s) now (cost + side effects). |
+| `triggers delete` / `unbind` (no --yes) | Pass `--yes` — removes the trigger / its agent wiring. |
+| `participants delete` (no --yes) | Pass `--yes` — removes the participant from the network. |
+| `capabilities delete` (no --yes) | Pass `--yes` — removes the capability from the routing vocabulary. |
+| `participants unbind` (no --yes) | Pass `--yes` — removes the participant from the agent's consult roster. |
+| `consult-pins delete` (no --yes) | Pass `--yes` — removes the deterministic routing override. |
+
+## Workspaces — one key each, named per command
+
+A Fruxon key is a **(user x workspace)** credential. It is stored in one
+workspace's residency cell and authenticates only at that cell's host, so
+there is no install-wide key: signing in happens once per workspace and
+each keeps its own.
+
+Every command takes `--workspace <id>`; without it, the stored default is
+used. The CLI resolves the workspace first, then that workspace's key
+*and* host together — they cannot be mixed.
+
+```bash
+fruxon workspaces list                      # what this machine holds, offline, no auth
+fruxon agents list --workspace acme-corp    # run against one, whatever the default is
+fruxon config set workspace=acme-corp       # change the default
+fruxon login --workspace acme-corp          # add one (does NOT evict the others)
+fruxon logout --workspace acme-corp         # drop one; --all drops every one
+```
+
+Naming a workspace this machine holds no key for fails **locally**, before
+any request, with exit `10` (`auth_required`) and a hint naming the login
+to run — the `hint` lists the workspaces that *are* signed in, so recover
+by picking one of those or running the login it names. Do not read that as
+a permissions problem; nothing was sent.
+
+`FRUXON_TOKEN` is the exception and stays unkeyed: when set it is used
+verbatim with whatever workspace was resolved. That is the CI path, and
+the caller exporting it is the one asserting the two match.
+
+`fruxon login` is additive and never prompts to replace a stored key, so
+it has no interactive guard beyond needing a browser (see Interactive
+guards above).
+
 ## Discovery — one call to learn the whole CLI
 
-Three commands, all offline, no auth required, all returning JSON in
-agent mode:
+Two commands, both offline, no auth required, both JSON in agent mode:
 
 ```
 fruxon describe                # the whole command tree, schema_version'd
 fruxon examples [topic]        # curated pasteable invocations
-fruxon completion zsh          # shell completion script for the user
 ```
 
 `describe` is the single most useful call: it returns every command
@@ -51,70 +142,14 @@ path, its arguments, options (long + short), types, defaults, choices,
 repeatable flags, hidden flag, and curated examples per top-level
 group. Read it once and you're fluent. The document is versioned via
 `schema_version` at the top — if you parse it, pin to the major you
-saw.
+saw. After an exit `2` (usage error), re-read the command's entry in
+`describe` rather than guessing another flag.
 
-## The authoring loop — schema → validate → run
+## Output shapes
 
-The canonical sequence for executing an agent you've never seen. The
-CLI's one execution surface runs the *draft* (Origin=TEST); production
-invocation of a deployed agent goes through the SDK, not the CLI:
+### `agents validate` and `agents draft validate`
 
-```
-fruxon agents schema <agent>                       # learn the typed shape
-fruxon agents validate <agent> -p user_query=…     # pre-flight your payload
-fruxon agents draft run <agent> -p user_query=… [-p ...]  # execute the draft (NDJSON stream)
-```
-
-**Authoring vs. running.** The loop above pre-flights the *run
-parameters* of an agent that already exists. When you're *building* the
-agent itself, the analogous pre-flight is `fruxon agents draft schema`
-(the draft-body `AgentDraftPayload` JSON Schema) and `fruxon agents draft
-validate [--file f]` (a local structural lint of the body — a missing
-`definition`, slot ids, tool→slot wiring, provider config,
-`parametersMetadata` in the wrong place). It uses the `{valid, errors,
-warnings}` envelope (the same `errors` + exit-12-on-failure contract as
-`agents validate`), but checks the body instead of the parameters, and
-needs no network. Add `--online` to also resolve references against the
-live catalog (unknown/unpublished LLM or integration config, unreal
-model, bad tool id) — the same envelope, plus a network round-trip per
-referenced provider/integration; findings only fire for catalogs that
-were actually fetched, so a permission gap never invents an error.
-`warnings[]` is additive and advisory — agent-level wiring gaps
-(`consult_unwired` when the body enables consult but the roster is empty;
-`approver_slot_undeclared`) that never flip `valid` or the exit code. For
-the wiring an authored body can't see (no bound trigger, empty roster,
-unmapped trigger params), audit a *deployed* agent with `fruxon agents
-check <agent>` (`{overall, checks}`; exits non-zero only on a hard fail).
-See `fruxon-build-agent`.
-
-A body carrying `flow` / `steps` / `edges` is the **previous** authoring
-contract and is rejected with a single `legacy_flow_body` error — the
-server won't deserialize it. Re-pull the draft, or convert an existing
-revision with `fruxon agents revisions get <agent> <n> --as-draft`.
-
-### `agents schema` — typed parameter metadata
-
-Returns the full `AgentParameters` envelope:
-
-```json
-{
-  "parameters": ["user_query", "lang"],
-  "metadata": [
-    {"name": "user_query", "type": "STRING", "required": true, "description": "..."},
-    {"name": "lang", "type": "OPTION",
-     "options": [{"value":"en","label":"English"}, ...], "defaultValue": "en"}
-  ]
-}
-```
-
-Types you'll see (UPPER_SNAKE): `STRING`, `INTEGER`, `FLOAT`, `BOOLEAN`,
-`OPTION` (use `options[].value`), `STRING_ARRAY`, plus `JSON` /
-`DICTIONARY` / `ASSET` / `TOOL` for complex shapes the validator won't
-statically check.
-
-### `agents validate` — pre-flight the payload
-
-Same `-p` / `--params` / `--stdin` input model as `fruxon agents draft run`. Returns:
+`fruxon agents validate <agent> -p k=v` pre-flights run parameters. Returns:
 
 ```json
 {
@@ -138,7 +173,9 @@ Same `-p` / `--params` / `--stdin` input model as `fruxon agents draft run`. Ret
 Crucially, every finding is surfaced in **one pass** — don't iterate
 one-error-at-a-time. The `code` slugs are stable: `missing_required`,
 `unknown_parameter`, `wrong_type`, `invalid_option`. Validation fails
-with exit 12; valid payloads exit 0.
+with exit 12; valid payloads exit 0. `fruxon agents draft validate`
+lints a draft *body* with the same `{valid, errors}` envelope and exit
+code, plus an advisory `warnings[]` that never flips `valid`.
 
 ### `agents draft run` — NDJSON event stream in agent mode
 
@@ -238,32 +275,10 @@ reply. `blocked` frames report real sends the sandbox prevented — assert
 on them for "no-leak" tests. `typing` / `status` liveness frames are
 dropped in agent mode.
 
-**Sandbox is not a full containment.** It blocks channel sends and memory
-writes, but an integration tool call runs against whatever the tenant's
-credential is configured for — by default, production. Pass
-`--confirm-writes` on `turn` / `fire` to park every create / update / delete
-tool call as a `pending_approval` (reads run straight through); its
-`message` says whether the call would reach production or a simulator.
-
-**Testing an edit without publishing it:** `--draft` on `turn` / `fire` runs
-*your* draft of the agent (drafts are per-user) instead of the deployed
-revision. `agents sandbox draft <session>` reports which one would run —
-`hasDraft: false` means the turn is refused (400); `onCurrentRevision: false`
-means the draft forks from an older revision than the deployed one.
-
-**Reproducing a real conversation:** `agents sandbox fork <agent> <message-id>`
-(an `id` from `agents topics messages -o json` — the reply that went wrong)
-opens a session seeded with the history the agent had at that point and
-returns `sessionId`, `participantId` and `resendText` — the customer's message
-as they typed it. `--send` re-sends it for you (with `--draft`, and with writes
-held unless `--no-confirm-writes`), then `stream` the session as usual:
-
-```json
-{"sessionId":"s_abc","participantId":"6f1c…","copiedMessages":12,"prefillText":"Dana (@dana) at 2026-09-15 08:12 UTC:\nI was charged twice","resendText":"I was charged twice","sent":true,"revisionPolicy":"DRAFT","confirmWrites":true, …}
-```
-
-Send `resendText`, never `prefillText`: the platform frames every inbound turn
-itself, so the stored framing would reach the agent twice.
+`agents sandbox fork` returns both `resendText` and `prefillText`. If you
+send the customer's message yourself, send `resendText`: the platform
+frames every inbound turn, so `prefillText` would reach the agent framed
+twice. (`fork --send` does this for you.)
 
 ### `agents sandbox test` — one verdict, not a stream
 
@@ -286,101 +301,10 @@ agent), **12** = a malformed scenario file, **10–15** = couldn't run
 This is the agent-authored e2e gate: write the file, run one command, branch on
 `passed`.
 
-## Exit codes — typed, stable, sufficient for retry logic
+### Draft state and `tests watch`
 
-Every failure classifies into one of these:
-
-| Code | Slug | Meaning |
-|---:|---|---|
-| 0 | — | Success |
-| 1 | `generic` | Unclassified failure (legacy paths, user-cancel) |
-| 2 | `usage` | Parse error — unknown flag, missing argument, unknown command, a group invoked with no subcommand. At every depth, including a bad flag on `fruxon` itself. Never a crash report. |
-| 10 | `auth_required` | 401/403, no credentials, missing scope |
-| 11 | `not_found` | 404 — the agent / integration / tool / key doesn't exist |
-| 12 | `validation` | 400/422, bad flag value, malformed body, pre-flight failed |
-| 13 | `conflict` | 409 — draft moved, version mismatch |
-| 14 | `server_error` | 5xx, mid-stream server failure |
-| 15 | `network_error` | Couldn't reach the API |
-| 16 | `interactive_required` | A blocking prompt was hit in agent mode |
-
-A driver branching retry/abort decisions should match on these
-numbers, not on prose. The codes are picked outside Python's (0/1/2)
-and shell's (126+) common range so they don't collide.
-
-## Error envelope — every failure speaks JSON
-
-In agent mode, every error path emits a single JSON line on **stderr**
-(your stdout stays reserved for the command's primary output):
-
-```json
-{"error":{"code":"auth_required","message":"No workspace found.","exit_code":10,"hint":"Run fruxon login --workspace <id>..."}}
-```
-
-Fields are stable across releases. `code` is the slug from the exit-
-code table above. `message` is plain text — Rich markup is stripped.
-`hint` may be absent when there's no actionable next step. To recover,
-read stderr's last JSON line on non-zero exit.
-
-## Workspaces — one key each, named per command
-
-A Fruxon key is a **(user x workspace)** credential. It is stored in one
-workspace's residency cell and authenticates only at that cell's host, so
-there is no install-wide key: signing in happens once per workspace and
-each keeps its own.
-
-Every command takes `--workspace <id>`; without it, the stored default is
-used. The CLI resolves the workspace first, then that workspace's key
-*and* host together — they cannot be mixed.
-
-```bash
-fruxon workspaces list                      # what this machine holds, offline, no auth
-fruxon agents list --workspace acme-corp    # run against one, whatever the default is
-fruxon config set workspace=acme-corp       # change the default
-fruxon login --workspace acme-corp          # add one (does NOT evict the others)
-fruxon logout --workspace acme-corp         # drop one; --all drops every one
-```
-
-Naming a workspace this machine holds no key for fails **locally**, before
-any request, with exit `10` (`auth_required`) and a hint naming the login
-to run — the `hint` lists the workspaces that *are* signed in, so recover
-by picking one of those or running the login it names. Do not read that as
-a permissions problem; nothing was sent.
-
-`FRUXON_TOKEN` is the exception and stays unkeyed: when set it is used
-verbatim with whatever workspace was resolved. That is the CI path, and
-the caller exporting it is the one asserting the two match.
-
-`fruxon login` is additive and never prompts to replace a stored key, so
-it has no interactive guard beyond needing a browser (below).
-
-## Interactive guards — what to do when you hit one
-
-These paths block on a human under normal use; in agent mode they
-fail fast with exit `16` (`interactive_required`) and a hint naming
-the bypass flag.
-
-| Path | Bypass |
-|---|---|
-| `fruxon login` (no key) | Pass `--token $FRUXON_TOKEN` |
-| `fruxon agents draft run --edit` | Pass the value via `-p key=value` or `--params file.json` |
-| `keys delete` (no --yes) | Pass `--yes` |
-| `agents tests delete` (no --yes) | Pass `--yes` |
-| `agents budget delete` (no --yes) | Pass `--yes` |
-| `agents draft evaluate` (no --yes) | Pass `--yes` — it costs real money |
-| `agents approvals respond` / `cancel` (no --yes) | Pass `--yes` — **but stop first.** This responds to a *human-in-the-loop* gate; a response can run the gated tool. Only auto-`--yes` if the human you're acting for explicitly told you to approve/reject this request. Defaulting to approve defeats the gate. |
-| `agents memory forget-subject` (no --yes) | Pass `--yes` — it irreversibly deletes a subject's memories (GDPR forget). |
-| `triggers fire` (no --yes) | Pass `--yes` — it runs the bound agent(s) now (cost + side effects). |
-| `triggers delete` / `unbind` (no --yes) | Pass `--yes` — removes the trigger / its agent wiring. |
-| `participants delete` (no --yes) | Pass `--yes` — removes the participant from the network. |
-| `capabilities delete` (no --yes) | Pass `--yes` — removes the capability from the routing vocabulary. |
-| `participants unbind` (no --yes) | Pass `--yes` — removes the participant from the agent's consult roster. |
-| `consult-pins delete` (no --yes) | Pass `--yes` — removes the deterministic routing override. |
-
-## Output shapes you can rely on
-
-In agent mode, defaults flip to JSON. Every read command emits a
-parseable shape; every write command echoes the server's response so
-you don't need a follow-up GET. Highlights:
+Every read command emits a parseable shape; every write command echoes
+the server's response so you don't need a follow-up GET. Highlights:
 
 - `fruxon agents draft status` — booleans `local_edits` and
   `needs_reconcile` for direct branching ("if local_edits: push", "if
@@ -396,45 +320,10 @@ you don't need a follow-up GET. Highlights:
   `{"type":"start"}` → `{"type":"stream_live"}` → `{"type":"event",...}*`
   → `{"type":"stopped"}` on Ctrl-C.
 
-## Inspecting a past run
+## When to load the task guides
 
-After `run` exits, the `done` record carried a `record_id`. One
-execution has three facets, each its own command (all JSON-default
-under agent mode):
-
-```
-fruxon agents executions get    <agent> <record-id>   # record: status, cost, timing, tokens
-fruxon agents executions trace  <agent> <record-id>   # the step-by-step trace
-fruxon agents executions result <agent> <record-id>   # the final output the agent produced
-fruxon agents executions trace  <agent> <record-id> -o json | jq '.trace.steps[].kind'
-```
-
-`trace` is the post-mortem debugging view (LLM calls, tool calls,
-durations, which step failed); `get` is the cheap summary; `result`
-is what the agent returned.
-
-**Don't have a `record_id`?** When you're investigating executions you
-didn't kick off this session — production failures, a flaky trigger —
-discover them with `fruxon agents executions list <agent>` (newest-first,
-JSON-default in agent mode). It's the two-step observability loop:
-list to find ids, trace to read one.
-
-```
-# Triage: the newest 50 failed production executions, ids only
-fruxon agents executions list <agent> --status FAILED -n 50 | jq '.[].id'
-# Your own draft-test runs are Origin=TEST — production is the default
-fruxon agents executions list <agent> --origin TEST
-# Window it (and page back through history): ISO-8601 or Unix-ms
-fruxon agents executions list <agent> --since 2026-06-01 --until 2026-06-02
-```
-
-Each row carries `id`, `status`, `startTime`/`endTime`, `durationMs`,
-token counts, and `totalCost` — the same record shape `fruxon agents executions get`
-returns, so you can filter on cost/status before fetching any trace.
-
-## When to load the topical guides
-
-After this one:
+The `done` record of a run carries a `record_id`; reading what that run
+did is `fruxon-debug-trace`'s job. For the rest:
 
 - **fruxon-build-agent** — authoring loop (draft pull / edit / push /
   test / evaluate / deploy).
@@ -444,6 +333,5 @@ After this one:
 - **fruxon-debug-trace** — read an execution trace to explain a run
   that failed, hung, or quietly did the wrong thing.
 
-Each builds on the contract documented here — they assume you know
-agent mode emits JSON by default, that errors carry typed codes, and
-that `schema` / `validate` are the right pre-flight surfaces.
+Each assumes the contract documented here: JSON by default, typed exit
+codes, and the error envelope.
