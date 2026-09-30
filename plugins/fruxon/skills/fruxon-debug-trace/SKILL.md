@@ -126,6 +126,28 @@ Text output renders the whole tree, one line per step:
 
 The dotted path is a stable handle — use it when talking about a step.
 
+**A slow tool step says where its time went**, when the tool records it
+(`assets/search_assets` does). The indented line beneath the step splits
+the call:
+
+```
+1.1.1  TOOL · Search Assets  (SUCCESS · 12.2s · assets/search_assets)
+    upstream 12.1s · service 11.6s (embed 11.5s, retrieval 55ms, credentials 33ms, window 26ms) · unaccounted 420ms
+```
+
+`upstream` is the call as timed from our side; `service` is what the
+service reports it spent, stages largest first; `unaccounted` is the rest —
+connection, queueing, and above all a container booting from zero. One
+large stage means the service's own work was slow (above: RAG's embed call
+stalled, not our code); a large `unaccounted` is a cold start. A line with
+only `upstream` is a service that reports nothing back (an older RAG
+deployment) — the split is unknown, not zero. No line at all means the tool
+records no timing, and `-o json` has nothing more.
+
+A `result 48,113 → 212 chars · offloaded to file` (or `· projected
+<selector>`) line means the model was not handed the result as the tool
+returned it — see §5.
+
 **The JSON shape.** `--output json` is where the real detail lives, and
 the shape is not what the top-level key names suggest:
 
@@ -227,6 +249,8 @@ Every `TOOL` step carries what went in and what came back:
 toolTrace.tool            # {integrationId, id} — the identity to grep for
 toolTrace.parameters      # exactly what the model passed
 toolTrace.resultDelivery  # SIZES ONLY — how much the model was shown
+toolTrace.upstream        # {callMs, serverMs, unaccountedMs, serverStages}
+                          # — where the time went; some tools only
 result.jsonValue          # structured result …
 result.strValue           # … or a string one
 error                     # present iff status == "ERROR"
@@ -256,12 +280,19 @@ Whole results, unabridged, in JSON:
 ```
 
 **Check `resultDelivery` before theorising.** It reports
-`originalChars` / `deliveredChars` and `offloaded` / `projected`. A tool
-that returned 22 records but delivered a truncated view explains a model
-that "ignored" most of them — and no amount of prompt-reading will show
-you that. Equally, if `offloaded` is false and the counts match, you can
-trust that the model genuinely saw the whole result and the fault is in
-its reasoning or its instructions.
+`originalChars` / `deliveredChars` and `offloaded` / `projected`, and the
+text tree prints a `result` line whenever either flag is set. A tool that
+returned 22 records but delivered a file link or a projection explains a
+model that "ignored" most of them — and no amount of prompt-reading will
+show you that. Equally, if neither flag is set, the model genuinely saw
+the whole result and the fault is in its reasoning or its instructions.
+
+**Trust the flags, not the counts.** `originalChars` is measured before
+the JSON is un-escaped for the model and `deliveredChars` after, so a
+non-ASCII result reports a big drop with nothing cut: a Hebrew
+`get_users_by_phone` result reads `565 → 220`, which is just its
+`\uXXXX`-escaped length against its readable one. Anything that genuinely
+cuts a result sets `offloaded`.
 
 `LLM_STEP` steps carry:
 
@@ -348,7 +379,9 @@ A step's output is rarely the mystery. The mystery is the state it read.
   often a run that fired sooner than the schedule implies — an
   off-schedule fire consumed the backlog and advanced the watermark.
   `triggers list` alone won't tell you: it carries `lastFiredAt` but not
-  the schedule.
+  the schedule. It also says where each binding **delivers** (`delivers
+  to` / `bindings[].outputDestination`) — the first place to look when a
+  run COMPLETED but its reply never arrived.
 - **A ledger automation's state is the item, not memory.** When the run's
   trigger type is `LEDGER_ITEM`, the durable state is the work item the
   sweep claimed — so the question "what did this run know?" is answered by
@@ -372,6 +405,15 @@ A step's output is rarely the mystery. The mystery is the state it read.
   is not a fault; the contact is queue-bound and the pending row is itself the
   operator-queue item. The way out is `fruxon triggers questions answer` out of
   band, or `ledger cancel-batch`, which returns the items to READY.
+- **A READY item at a batch stage may be gathering, not stuck.** A stage with
+  a `batch` block runs its items in groups, and an item waits READY until its
+  group closes — full, its oldest item has waited the window, or nothing
+  upstream can still add to it. `fruxon triggers ledger gathering <trigger-id>`
+  says which each group is waiting on; `WAITING_FOR_RUNNING_BATCH` means the
+  group's previous batch is still running (one per group at a time). A CLAIMED
+  item there carries `batchRunId`, and `ledger batch-runs` shows that run, its
+  trace and its cost. To run the groups now: `triggers fire <trigger-id>
+  --max-admit 0 --stage <stage> --close-gathering --yes`.
 - **An IGNORED item was a decision, and the reason is the diagnosis.**
   `ledger funnel` stops at a count, which nobody can act on. `fruxon triggers
   ledger exclusions <trigger-id>` lists every reason a stage recorded with how

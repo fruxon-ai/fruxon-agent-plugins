@@ -73,6 +73,8 @@ fruxon knowledge-bases correct <kb> <doc> -i "what is wrong"  # let the editor a
 fruxon knowledge-bases consolidate <kb>  # queue a report of near-duplicate clusters; a standalone pass NEVER merges
 fruxon knowledge-bases apply <kb> <run> --cluster <id>  # merge the clusters you accepted from that report (--all for every one)
 fruxon knowledge-bases source list / preview / sync / pause / resume <kb>  # the pipelines that write articles; a built source lands PAUSED
+fruxon llm-providers list / models <provider>  # LLM providers + exact model ids (don't guess them)
+fruxon llm-providers configs list / get / test / publish <provider>  # saved LLM credentials; publish switches every agent on it (--yes-gated)
 fruxon metrics list                    # evaluation-metric ids for an LLM judge (judge.rubric.metrics)
 fruxon triggers list / create / bind / fire  # autonomy: fire agents on schedule/event (write surface)
 fruxon triggers preview-shape / test-source <t>  # dry-run a work shape: what each stage sends, what the door lists (--count for how much, startFrom for the first after:, FILTERED for what door.skipWhen drops, and each record as door.projection will store it)
@@ -83,6 +85,7 @@ fruxon triggers ledger redrive-many / ignore-many <t>  # the same over a selecti
 fruxon triggers ledger exclusions <t>   # every reason items were set aside, with counts — the list --ignore-reason is picked from
 fruxon triggers ledger redrive-many <t> --ignore-reason "<recorded reason>"  # undo the exclusions one revised instruction made
 fruxon triggers ledger batches <t> --open-only  # what it is waiting on a human for; read `delivery` — UNDELIVERABLE means nobody was asked
+fruxon triggers ledger gathering / batch-runs <t>  # a batch stage: what each group waits on, and the runs over groups (cancel-batch-run, --yes-gated)
 fruxon triggers set-stages <t> --file + triggers revisions list / restore  # edit a work shape, and undo it
 fruxon participants list / create / enable / disable / delete  # agent-network participants (--yes-gated delete)
 fruxon applications list / get / roles # the container that owns agents; `roles` = who holds each roster role

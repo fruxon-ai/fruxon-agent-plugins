@@ -44,7 +44,10 @@ revision from it.
      (don't guess model names; they change)
    - `fruxon llm-providers configs list <provider>` — the tenant LLM
      config ids; pin a published one on a step via
-     `provider.tenantConfigId`
+     `provider.tenantConfigId`. `configs test <provider> <id>` probes a
+     config's credentials; `configs publish` ships a draft — and switches
+     every agent already on that config, so it asks first (`--yes` under
+     an agent driver)
    - `fruxon assets create --file ./docs.pdf -o id` — create a
      file-backed knowledge-base (RAG) asset from the CLI. Then run
      `fruxon assets wait <id>` before wiring it into a step; ingestion is
