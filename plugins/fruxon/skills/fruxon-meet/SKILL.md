@@ -96,7 +96,7 @@ fruxon capabilities list / create / update / delete  # consult-routing vocabular
 fruxon participants bind / roster <p> <agent> + fruxon agents roster <agent>  # consult wiring
 fruxon consult-pins list / create / delete  # deterministic capability→participant overrides
 fruxon guides list / show <id>         # this catalog — CLI playbooks
-fruxon skills list / show <id>         # product skills attached to agents
+fruxon skills list / show / create / update / delete  # product skills attached to agents
 fruxon completion {bash|zsh|fish}      # shell completion script
 ```
 
@@ -137,4 +137,5 @@ Run `fruxon guides show <id>`:
 - **Skills** (`fruxon skills`) — a Fruxon *product* feature. A skill
   is a tenant-scoped resource (instructions + tools) that attaches to
   an agent revision so the agent loads it at execution time. Lives
-  in the backend, browsable via `fruxon skills list`.
+  in the backend, browsable via `fruxon skills list`, authored with
+  `fruxon skills create` / `update`.

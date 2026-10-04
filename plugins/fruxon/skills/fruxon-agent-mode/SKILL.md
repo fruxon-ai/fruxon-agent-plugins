@@ -318,7 +318,15 @@ the server's response so you don't need a follow-up GET. Highlights:
   as the next `If-Match` without re-fetching.
 - `fruxon agents tests watch` — long-lived NDJSON stream:
   `{"type":"start"}` → `{"type":"stream_live"}` → `{"type":"event",...}*`
-  → `{"type":"stopped"}` on Ctrl-C.
+  → `{"type":"stopped"}` on Ctrl-C. An event that moved a chat's latest
+  turn also carries `state` (`RUNNING` when a turn starts; `IDLE` with a
+  reply, `FAILED` or `WAITING` without one) and `turn`
+  (`started_at`, `ended_at`, `execution_record_id` — each only when
+  known). Wait for a test started elsewhere by watching its chat until the
+  state leaves `RUNNING`; on `FAILED`, read the run via its
+  `execution_record_id`.
+- `fruxon agents tests list -o json` — each chat carries the same `state`
+  (always) and `turn` (unless `IDLE`), in the server's camelCase.
 
 ## When to load the task guides
 

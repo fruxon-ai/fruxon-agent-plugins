@@ -44,7 +44,10 @@ revision from it.
      (don't guess model names; they change)
    - `fruxon llm-providers configs list <provider>` — the tenant LLM
      config ids; pin a published one on a step via
-     `provider.tenantConfigId`. `configs test <provider> <id>` probes a
+     `provider.tenantConfigId`. `vertex_ai_gemini` and `vertex_ai_maas`
+     share `vertex_ai`'s credential: their steps pin a `vertex_ai` config,
+     which the list shows (its `providerId` reads `vertex_ai`), and a new
+     one is created under `vertex_ai`. `configs test <provider> <id>` probes a
      config's credentials; `configs publish` ships a draft — and switches
      every agent already on that config, so it asks first (`--yes` under
      an agent driver)
@@ -296,16 +299,20 @@ Practical implications for the build loop:
   fruxon agents tests show <agent> <chat-id>
   fruxon agents tests watch <agent>           # SSE — live tail
   ```
-- **Set a Test-bucket budget** so a runaway loop doesn't burn
-  through the month's prod budget by mistake:
+- **Check and adjust the Test-bucket budget.** Every agent is created
+  with enforced Test caps of $5 a day, $20 a week and $50 a month; a
+  run is refused once any one is spent, and the daily one usually
+  trips first during heavy iteration:
   ```
-  fruxon agents budget set <agent> --amount 50 --origin TEST
-  fruxon agents budget get <agent> --origin TEST
+  fruxon agents budget list <agent>
+  fruxon agents budget set <agent> --origin TEST --period WEEKLY --amount 60
+  fruxon agents budget set <agent> --origin TEST --period DAILY --amount 20
   ```
   Production and Test budgets are independent — `--origin TEST`
   caps only test runs; the default (or `--origin PRODUCTION`) caps
-  only prod traffic. Test budgets are opt-in: no budget = uncapped
-  test runs.
+  only prod traffic. `--period` defaults to `MONTHLY`. The windows
+  stay ordered daily ≤ weekly ≤ monthly, so raise the longer one
+  first. Caps reset at 00:00 UTC (weeks start Monday).
 - **`draft evaluate`** (next section) accumulates Test-bucket spend
   too; check `tests cost` after a big eval to see where it landed.
 
@@ -372,6 +379,15 @@ for their fields — this is the map of what exists:
 | `outputContract` | Constrain the output to JSON / a JSON schema |
 | `dialogueProfile` | A second prompt + toolset for conversational runs |
 | `allowedSecretIds` | Which tenant secrets `{{secret.NAME}}` may expand |
+| `skills` | Instruction packs the agent loads on demand via `activate_skill` (`[{skillId}]`; author with `fruxon skills create`) |
+
+### Skills: what to move out of the prompt
+A skill is loaded only when the model decides its description applies, so
+anything that must hold on *every* run — red lines, routing, the order of
+tool calls — stays in `systemPrompt`. Move the long per-case detail (one
+procedure per team, say) into skills, and write each `description` as the
+condition for loading it. Skill content is read live, not pinned to the
+revision: `fruxon skills update` changes every agent using it on its next run.
 
 ### Binding a collection pipeline
 `pipelines.bindings[]` is an **allowlist**: `run_pipeline` refuses any
@@ -535,7 +551,9 @@ Discovering the ids (the CLI can't guess them for you):
   the run fails with `LLMProvider <x> is not configured` — even when the
   provider *is* configured. Discover ids with
   `fruxon llm-providers configs list <provider>` and pick a published
-  one.
+  one. `vertex_ai_gemini` and `vertex_ai_maas` share `vertex_ai`'s
+  credential, so for them that is a `vertex_ai` config: their list
+  includes it, and the server refuses to create a config under either.
 
 ## Common pitfalls
 `fruxon agents draft validate` catches most of these locally before a
