@@ -32,7 +32,7 @@ handoff smooth.
    an integration that's there, and don't create a duplicate slug:
    ```
    fruxon integrations list --query <keyword>
-   fruxon integrations get <candidate-id>   # 404 = slug is free
+   fruxon integrations get custom_<slug>    # 404 = slug is free
    ```
    In agent mode these default to JSON, so the listing already
    carries each integration's `description` — enough to judge
@@ -66,7 +66,10 @@ handoff smooth.
    AI-agent driver to consume in one call.
 
 3. **Author `integration.json`.** Key fields:
-   - `id` — kebab-case slug (`github`, `linear`, `posthog`).
+   - `id` — `custom_` followed by a snake_case slug (`custom_github`,
+     `custom_acme_crm`). The prefix is required — the server rejects a
+     custom integration id without it — and keeps custom ids from ever
+     colliding with a built-in integration.
    - `displayName` — what shows in the dashboard.
    - `configMetadata.authMetadata[]` — describe each auth
      method the user will supply via the UI:
@@ -262,7 +265,8 @@ purpose (audit + intentional secret-minting).
   --query <keyword>` — and reuse/extend instead of duplicating.
 - `id` collisions: both `integration.id` and `tool.id` are
   unique-per-tenant. If `fruxon integrations get <id>` returns
-  404, the id is free. Otherwise pick a fresh slug.
+  404, the id is free. Otherwise pick a fresh slug (keeping the
+  `custom_` prefix).
 - Skipping the dashboard handoff and instead writing the secret
   into the JSON. Don't. Even if the user offers it. The shape /
   instance separation is a security boundary, not a suggestion.

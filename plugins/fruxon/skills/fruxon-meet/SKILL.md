@@ -50,6 +50,7 @@ fruxon agents executions list <agent>  # past executions, newest-first (find a r
 fruxon agents executions get|trace|result <agent> <record-id>  # one execution: summary | steps | output
 fruxon agents topics list <agent>      # the agent's conversation threads (--state/--participant)
 fruxon agents topics messages <agent> <topic>  # the actual transcript of one conversation
+fruxon agents topics origin <agent> <topic>    # why it was opened — the main-conversation turn behind it
 fruxon agents topics sessions <agent> <topic>  # its episodes — why each one ended
 fruxon agents inbox <agent>            # what the agent is paying attention to (focal/home topics)
 fruxon agents approvals list <agent>   # pending human-in-the-loop approvals a run is blocked on
@@ -86,6 +87,9 @@ fruxon triggers ledger exclusions <t>   # every reason items were set aside, wit
 fruxon triggers ledger redrive-many <t> --ignore-reason "<recorded reason>"  # undo the exclusions one revised instruction made
 fruxon triggers ledger batches <t> --open-only  # what it is waiting on a human for; read `delivery` — UNDELIVERABLE means nobody was asked
 fruxon triggers ledger gathering / batch-runs <t>  # a batch stage: what each group waits on, and the runs over groups (cancel-batch-run, --yes-gated)
+fruxon triggers ledger test-stage <t> --stage <id> --item <item> --wait  # run ONE stage in the sandbox; the verdict is what the ledger would do (writes nothing, paid test-budget run)
+fruxon triggers ledger test-stage <t> --stage <ask> --item <item> --answer <value>  # an ASK stage: the reply a person would send (--reply for prose); no agent runs
+fruxon triggers ledger walk <t> --item <item> --answer <ask>=<value> --yes  # chain stage tests through the shape; stopped.code says where a real pass stops (walk-steps / stage-test / cancel-stage-test)
 fruxon triggers set-stages <t> --file + triggers revisions list / restore  # edit a work shape, and undo it
 fruxon participants list / create / enable / disable / delete  # agent-network participants (--yes-gated delete)
 fruxon applications list / get / roles # the container that owns agents; `roles` = who holds each roster role

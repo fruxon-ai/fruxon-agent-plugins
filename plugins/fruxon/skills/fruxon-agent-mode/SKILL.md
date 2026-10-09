@@ -89,6 +89,7 @@ the bypass flag.
 | `agents approvals respond` / `cancel` (no --yes) | Pass `--yes` — **but stop first.** This responds to a *human-in-the-loop* gate; a response can run the gated tool. Only auto-`--yes` if the human you're acting for explicitly told you to approve/reject this request. Defaulting to approve defeats the gate. |
 | `agents memory forget-subject` (no --yes) | Pass `--yes` — it irreversibly deletes a subject's memories (GDPR forget). |
 | `triggers fire` (no --yes) | Pass `--yes` — it runs the bound agent(s) now (cost + side effects). |
+| `triggers ledger walk` (no --yes) | Pass `--yes` — every step is a paid model run on the agent's test budget (up to `--max-steps`, default 10). It writes nothing; read `stopped.code` in the JSON, since it exits 0 whenever it ran. |
 | `triggers delete` / `unbind` (no --yes) | Pass `--yes` — removes the trigger / its agent wiring. |
 | `participants delete` (no --yes) | Pass `--yes` — removes the participant from the network. |
 | `capabilities delete` (no --yes) | Pass `--yes` — removes the capability from the routing vocabulary. |

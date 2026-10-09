@@ -393,6 +393,27 @@ A step's output is rarely the mystery. The mystery is the state it read.
   <trigger-id>` then renders the exact `user_query` that stage sends,
   including the item payload appended to the instruction — which is usually
   most of the prompt and appears nowhere in the shape as authored.
+- **"Would the stage get it right now?" is a stage test, not a re-drive.**
+  A re-drive runs the item for real, writes and all. `fruxon triggers ledger
+  test-stage <trigger-id> --stage <stage> --item <item-id> --wait` runs that
+  one stage, by its agent's *deployed* revision, on the item, in the sandbox
+  — nothing on the ledger is written, writes go to the simulator, and the run
+  is charged to the test budget. The verdict is the transition a real pass
+  would write (`ADVANCE` / `IGNORE` / `DEAD` / `FAIL` / `REFUSE`, with its
+  `cause` and `detail`) plus what a pass only learns by writing:
+  `duplicateOf` (a pass would IGNORE the item as that one's duplicate) and
+  `nextStageMissing` (the next stage would park it DEAD). Its
+  `executionRecordId` opens with `agents executions trace` like any run. An
+  instruction edit is tested before saving with `--shape @draft.json`; an
+  agent edit has to be deployed first. A batch stage runs the item as a
+  batch of one. An ASK stage runs no agent: test it with the reply the
+  person would send — `--answer <value>` (applied as is, no model) or
+  `--reply <text>` (read by a model, as a real reply is) — and a reply that
+  leaves the item out is a `WAIT` verdict. `fruxon triggers ledger walk
+  <trigger-id> --item <item-id> --yes` replays the rest of the path, each
+  stage on the data the last one advanced with (`--answer <stage>=<value>`
+  for each ASK stage it reaches), and `stopped.code` names where a real pass
+  would stop — test there, then re-drive.
 - **A WAITING item is not stuck — it is parked, and the question may have
   reached nobody.** `WAITING` means the item is on an ASK stage's batch, and
   `ledger items` carries the `batchId` that joins it to one. The pairing is
@@ -633,6 +654,26 @@ nothing handed the conversation back to its console. And an `endCause` with
 no `endedAt` is an end that was *requested* and never applied; a new inbound
 message voids it, so it is not an ended episode and must not be counted as
 one.
+
+## 9b. "Why does this topic exist? Its transcript starts in the middle"
+
+A topic opened from inside a conversation — handed to the team, opened with
+`open_topic`, or a customer coming back about a closed ticket — is created by a
+run in the participant's *main* conversation. That run's rows (the customer's
+message, the agent's reply) are stamped to the home session, so `topics
+messages` on the topic starts after them, often on an operator's "Done".
+
+```
+fruxon agents topics origin <agent> <topic> -o json
+```
+
+`openingTurn.messages` is that turn, and `openingTurn.executionRecordId` is the
+run to `executions trace`. `reason` / `tried` / `handoff` are the agent's own
+words for why. For a follow-up, `continues.topicId` is the earlier topic: run
+`origin` on it too to walk the case back. **`derived: true`** means the topic
+predates recorded origins and the server matched the run in flight when it
+was created; `openingTurn: null` with `customerWords` set means the opening run
+failed before saving rows.
 
 ## 10. Reproduce the bad reply, then prove the fix
 

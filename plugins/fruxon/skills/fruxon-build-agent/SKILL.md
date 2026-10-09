@@ -110,7 +110,8 @@ revision from it.
    checks the body with no server round-trip (a `definition` is present,
    slot ids are GUIDs, built-ins on `provider.builtInTools` not `tools`,
    every integration tool resolvable to a slot, `provider.tenantConfigId`
-   is pinned, `parametersMetadata` is top-level and spelled right). It
+   is pinned, `parametersMetadata` is top-level and spelled right, every
+   `prefetch` call within the platform's rules — see "Prefetch" below). It
    reports *every* finding in one pass (each with a stable `code`) and
    exits 12 if any — fix them before you push. Most of the "Common pitfalls" below are
    caught here. Add **`--online`** to also resolve references against the
@@ -118,8 +119,10 @@ revision from it.
    assets and secrets if used): does the pinned LLM config exist and is it
    published, is the model real for that provider, does a slot's
    `tenantConfigId` resolve, is a tool id real, is a referenced asset
-   embedded/queryable, and does each `allowedSecretIds` secret exist + is it
-   published + is this agent granted it (else the resolver refuses it) —
+   embedded/queryable, does each `allowedSecretIds` secret exist + is it
+   published + is this agent granted it (else the resolver refuses it), and
+   can each prefetched tool actually run before the model (its labels, its
+   parameter names, its required parameters) —
    the referential traps that otherwise deploy clean then fail (or return
    nothing) at run. Worth running once right before `revisions create`.
 5. **Sync the draft**: `fruxon agents draft push <agent>` saves your
@@ -144,7 +147,7 @@ revision from it.
    **populates the agent's required params** (an unmapped required param
    fails the run at fire time) and references a real `eventType`, and that
    the deployed revision's **references resolve** (slot configs published,
-   model real, tool ids valid). These live *outside* the body, so a clean
+   model real, tool ids valid, prefetched tools still prefetchable). These live *outside* the body, so a clean
    `validate` can still leave the agent inert. `check` exits non-zero only
    on a hard failure (no revision); the rest are warnings. (`draft validate
    --online` also surfaces the `consult_unwired` / `approver_slot_undeclared`
@@ -380,6 +383,7 @@ for their fields — this is the map of what exists:
 | `dialogueProfile` | A second prompt + toolset for conversational runs |
 | `allowedSecretIds` | Which tenant secrets `{{secret.NAME}}` may expand |
 | `skills` | Instruction packs the agent loads on demand via `activate_skill` (`[{skillId}]`; author with `fruxon skills create`) |
+| `prefetch` | Up to 3 read-only tool calls made before the first model call of a conversation turn (see "Prefetch" below) |
 
 ### Skills: what to move out of the prompt
 A skill is loaded only when the model decides its description applies, so
@@ -444,6 +448,89 @@ output. An unresolved placeholder is a hard run-time error.
   inherits the agent-wide `integrationBindings` entry for its
   integration. Omitting is the common case; pin only when one
   integration has several slots and this tool needs a specific one.
+
+## Prefetch: lookups before the first model call
+`definition.prefetch` lists up to **3** read-only tool calls the platform
+makes on a conversation's turn *before* the model's first call. The results
+reach the model in its instructions, as a `<looked_up_before_this_turn>`
+block, so it starts from the answer instead of spending a model call
+(about five seconds) asking for it.
+
+Use it for a lookup that needs no input from the model:
+
+- **Who the customer is.** A lookup whose parameter is pinned on the
+  binding (`phone_number` = `{{sender.address.texterchat}}`), with
+  `minLetters: 0` so it runs on the first turn even if that's just "hi", and
+  `keepForConversation: true` so later turns see the result without calling
+  again. A kept result is capped at 4000 characters unless `maxResultChars`
+  says otherwise.
+- **A knowledge search on the customer's words.** `assets.search_assets`
+  with `query` = `{{turn.message_text}}`. It needs no `tools[]` entry; it
+  comes with `assetConfig.enabled`. Use it only when the prompt doesn't push
+  the model to search again anyway. On 2026-10-04 a prompt that told the
+  model to run several queries of its own made it ignore the prefetched
+  search, so the call was pure cost.
+
+```json
+"definition": {
+  "tools": [
+    {
+      "toolKey": {"integrationId": "restigo", "id": "get_users_by_phone"},
+      "safeToRepeat": true,
+      "pinnedParameters": [{"name": "phone_number", "value": "{{sender.address.texterchat}}"}]
+    }
+  ],
+  "assetConfig": {"enabled": true, "assetIds": ["<asset id>"]},
+  "prefetch": [
+    {
+      "toolKey": {"integrationId": "restigo", "id": "get_users_by_phone"},
+      "arguments": {},
+      "minLetters": 0,
+      "keepForConversation": true,
+      "maxResultChars": 2000
+    },
+    {
+      "toolKey": {"integrationId": "assets", "id": "search_assets"},
+      "arguments": {"query": "{{turn.message_text}}"}
+    }
+  ]
+}
+```
+
+The rules. `draft validate` checks them; the ones marked *online* need
+`--online`, because they read the tool's definition:
+
+- The tool is one of `definition.tools`, because the call runs under that
+  binding (its pins, config and credentials). The exception is
+  `assets.search_assets` with `assetConfig.enabled`. Each tool at most once,
+  at most 3 calls.
+- The call must change nothing. No `humanApproval`, `repeatGuard` or
+  `durableEffect` on the binding. *Online:* the tool is synchronous,
+  labelled `READ_ONLY`, and trusted: a platform (`PREDEFINED`) or agent
+  tool, or a tenant tool whose binding sets `safeToRepeat: true`.
+- `arguments` is parameter name → template, at most 20. A template may use
+  only `{{turn.message_text}}` (the customer's own words this turn),
+  `{{sender.*}}` and `{{venue.*}}`. It can't use a run parameter, a secret or
+  another step's output. Don't set a parameter the binding pins. *Online:*
+  every argument is a real parameter, and every required parameter is given
+  or pinned.
+- `minLetters` is 0–10000, default 15. The call waits for a turn whose
+  customer text has that many letters, so a greeting or an emoji doesn't set
+  it off. `maxResultChars` is 200–50000, or omitted.
+
+When it runs: on a conversation turn only, not on an API, trigger or flow
+run, and not in a spawned subtask. Each call runs once per conversation, on
+the first turn that passes `minLetters`, and is retried on the next one if it
+failed. The calls share a 3-second budget; one that fails or runs over is
+left out and the turn goes on. In the lab it runs only with **Confirm tool
+writes** off: a turn that holds writes for confirmation shows what was kept
+but runs nothing. Evaluation replays never run it.
+
+`draft push` doesn't validate, and neither does the server's draft save, so
+the lab can run a prefetch nothing has checked, and a call the runner
+refuses is skipped without an error. Run `draft validate --online` before
+you push. `fruxon agents check` re-checks a deployed revision's prefetched
+tools, because a tool's label can change after the agent was saved.
 
 ## Contacts: who the agent can reach
 A contact is the addressing indirection between the agent and a human —
