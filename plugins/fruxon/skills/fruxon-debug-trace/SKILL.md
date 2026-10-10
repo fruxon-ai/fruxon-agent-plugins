@@ -386,8 +386,10 @@ A step's output is rarely the mystery. The mystery is the state it read.
   trigger type is `LEDGER_ITEM`, the durable state is the work item the
   sweep claimed — so the question "what did this run know?" is answered by
   `fruxon triggers ledger items <trigger-id> --item-key <key>` (its
-  accumulated `data`) and `ledger transitions <trigger-id> <item-id>` (every
-  attempt, each with the `executionRecordId` behind it). Both are per-item
+  accumulated `data`; with only a customer name or a policy number in hand,
+  `--search <text>` finds the item by any value in its data instead) and
+  `ledger transitions <trigger-id> <item-id>` (every attempt, each with the
+  `executionRecordId` behind it). Both are per-item
   history the trace cannot carry: a run shows one attempt, the transition
   log shows why there was a third. `fruxon triggers preview-shape
   <trigger-id>` then renders the exact `user_query` that stage sends,
@@ -405,14 +407,20 @@ A step's output is rarely the mystery. The mystery is the state it read.
   `nextStageMissing` (the next stage would park it DEAD). Its
   `executionRecordId` opens with `agents executions trace` like any run. An
   instruction edit is tested before saving with `--shape @draft.json`; an
-  agent edit has to be deployed first. A batch stage runs the item as a
+  agent edit is tested before deploying it: `fruxon agents revisions create
+  <agent> --file rev.json` (no `--deploy`), then `test-stage …
+  --agent-revision <N> --wait` (the step shows `rev N (not deployed)`), then
+  `fruxon agents revisions deploy <agent> <N>` once the verdict is right —
+  never push it as the agent's draft and `agents draft run` it, which skips
+  the stage's contract. A batch stage runs the item as a
   batch of one. An ASK stage runs no agent: test it with the reply the
   person would send — `--answer <value>` (applied as is, no model) or
   `--reply <text>` (read by a model, as a real reply is) — and a reply that
   leaves the item out is a `WAIT` verdict. `fruxon triggers ledger walk
   <trigger-id> --item <item-id> --yes` replays the rest of the path, each
   stage on the data the last one advanced with (`--answer <stage>=<value>`
-  for each ASK stage it reaches), and `stopped.code` names where a real pass
+  for each ASK stage it reaches, `--agent-revision <agent>=<N>` for an
+  undeployed revision), and `stopped.code` names where a real pass
   would stop — test there, then re-drive.
 - **A WAITING item is not stuck — it is parked, and the question may have
   reached nobody.** `WAITING` means the item is on an ASK stage's batch, and

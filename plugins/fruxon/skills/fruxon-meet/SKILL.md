@@ -40,6 +40,7 @@ fruxon agents list / get / create --application <app>
 fruxon agents schema <agent>           # typed parameter metadata
 fruxon agents validate <agent> -p k=v  # pre-flight a payload (no execution)
 fruxon agents revisions create [--deploy] / deploy / get [--as-draft]
+fruxon agents revisions list / deploys <agent>  # which revisions exist, which is live (★), who deployed what
 fruxon agents draft pull / push / status / run / evaluate / undo / redo / reset / discard
 fruxon agents draft schema             # the draft-body (AgentDraftPayload) JSON Schema — author against it
 fruxon agents draft validate <id>      # lint the definition locally, before push
@@ -88,6 +89,7 @@ fruxon triggers ledger redrive-many <t> --ignore-reason "<recorded reason>"  # u
 fruxon triggers ledger batches <t> --open-only  # what it is waiting on a human for; read `delivery` — UNDELIVERABLE means nobody was asked
 fruxon triggers ledger gathering / batch-runs <t>  # a batch stage: what each group waits on, and the runs over groups (cancel-batch-run, --yes-gated)
 fruxon triggers ledger test-stage <t> --stage <id> --item <item> --wait  # run ONE stage in the sandbox; the verdict is what the ledger would do (writes nothing, paid test-budget run)
+fruxon triggers ledger test-stage <t> --stage <id> --item <item> --agent-revision <N> --wait  # the same on an agent revision made without --deploy: test it before it ships
 fruxon triggers ledger test-stage <t> --stage <ask> --item <item> --answer <value>  # an ASK stage: the reply a person would send (--reply for prose); no agent runs
 fruxon triggers ledger walk <t> --item <item> --answer <ask>=<value> --yes  # chain stage tests through the shape; stopped.code says where a real pass stops (walk-steps / stage-test / cancel-stage-test)
 fruxon triggers set-stages <t> --file + triggers revisions list / restore  # edit a work shape, and undo it
@@ -109,8 +111,9 @@ Two layers of "schema" — use the right one for the job:
 
 - **Request-body schema** — for write commands taking `--file` (`agents
   create`, `revisions create`, `integrations create`, …), pass `--schema`
-  to print the JSON Schema for the body, sourced from the live OpenAPI
-  spec. Use before authoring a body.
+  to print the JSON Schema for the body, sourced from the OpenAPI spec of
+  the workspace's own host (cached on disk for an hour). Use before
+  authoring a body.
 - **Agent parameter schema** — for the parameters a deployed agent
   expects, run `fruxon agents schema <agent>`. Returns names, types,
   required flags, single-select options, defaults. Use before

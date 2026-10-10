@@ -103,17 +103,31 @@ workspace's residency cell and authenticates only at that cell's host, so
 there is no install-wide key: signing in happens once per workspace and
 each keeps its own.
 
-Every command takes `--workspace <id>`; without it, the stored default is
-used. The CLI resolves the workspace first, then that workspace's key
-*and* host together — they cannot be mixed.
+Every command takes `--workspace <id>`, and so does the root, ahead of the
+command: `fruxon --workspace <id> <command> …` (short: `-w`). Without either,
+`$FRUXON_WORKSPACE` and then the stored default are used. A command's own
+flag beats the root one, which beats the env var. The CLI resolves the
+workspace first, then that workspace's key *and* host together — they cannot
+be mixed, so a workspace in another cell is reached at that cell's host
+either way.
+
+Prefer the root form when building calls: one place for the workspace, the
+same on every command, and it survives being prepended to a command an
+earlier step produced. Pass it as two separate arguments — a single string
+`"--workspace acme-corp"` is one argument and fails with exit `2`.
 
 ```bash
-fruxon workspaces list                      # what this machine holds, offline, no auth
-fruxon agents list --workspace acme-corp    # run against one, whatever the default is
-fruxon config set workspace=acme-corp       # change the default
-fruxon login --workspace acme-corp          # add one (does NOT evict the others)
-fruxon logout --workspace acme-corp         # drop one; --all drops every one
+fruxon workspaces list                         # what this machine holds, offline, no auth
+fruxon --workspace acme-corp agents list       # run against one, whatever the default is
+fruxon agents list --workspace acme-corp       # same, flag on the command
+fruxon --workspace acme-corp whoami            # which key + host that resolves to, and why
+fruxon workspaces use acme-corp                # change the default
+fruxon login --workspace acme-corp             # add one (does NOT evict the others)
+fruxon logout --workspace acme-corp            # drop one; --all drops every one
 ```
+
+`--base-url` works the same way at the root (`fruxon --base-url <host> …`),
+for a backend the stored records don't know about — staging, local.
 
 Naming a workspace this machine holds no key for fails **locally**, before
 any request, with exit `10` (`auth_required`) and a hint naming the login

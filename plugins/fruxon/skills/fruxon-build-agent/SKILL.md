@@ -703,6 +703,11 @@ semantics.
   harmless until the agent is wired to a connector/trigger, but don't
   assume rev 1 is "draft-only". Subsequent revisions require an
   explicit `--deploy` (or `agents revisions deploy`).
+- **The live revision is not always the newest**: after a rollback,
+  newer revisions sit above the one that runs. `fruxon agents revisions
+  list <agent>` marks the live one with ★, and `agents revisions deploys
+  <agent>` shows who deployed what, when. Read both before building on
+  `revisions get` with no number, which fetches the live revision.
 
 ## Server errors at create-time, by message
 The pitfalls above are the ones `draft validate` catches. These arrive
