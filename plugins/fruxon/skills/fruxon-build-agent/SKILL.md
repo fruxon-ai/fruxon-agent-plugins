@@ -333,9 +333,10 @@ fruxon agents draft evaluate <agent> --dataset <uuid>   # confirm + run
 tokens + integration calls). The CLI quotes the sample count and
 asks for confirmation; in agent mode (`FRUXON_AGENT_MODE` /
 `CLAUDECODE` / Codex / `CI`) it refuses to run without an explicit `--yes`. Returns an
-evaluation run id immediately — poll
-`GET .../agents/<agent>/evaluationRuns/<run-id>` for the verdict
-(`score`, `deploymentRecommendation`, per-sample comparisons). The
+evaluation run id immediately — wait for the verdict with
+`fruxon agents evaluations get <agent> <run-id> --wait` (`score`,
+`deploymentRecommendation`), and read each sample's comparison with
+`fruxon agents evaluations samples <agent> <run-id>`. The
 draft snapshot is pinned at submit time, so further edits don't
 invalidate the result.
 

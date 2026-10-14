@@ -656,12 +656,37 @@ agent going in with nothing. The seed's prose is deliberately not on the
 wire: read `sourceTopicId` with `topics get` for the redacted outcome the
 agent was actually shown.
 
-Two shapes to check while you are here. A session still `RUNNING` on a
-`RESOLVED` topic is an episode nothing ever closed — which is also why
-nothing handed the conversation back to its console. And an `endCause` with
-no `endedAt` is an end that was *requested* and never applied; a new inbound
-message voids it, so it is not an ended episode and must not be counted as
-one.
+Two shapes to check while you are here. **A session still `RUNNING` on a
+`RESOLVED` topic is usually the healthy shape, not a strand.** Resolving a
+ticket ends the episode it interrupted — the participant's *home* session —
+and deliberately keeps the ticket's own session: a customer who comes back
+within the reopen grace window (48 hours from the topic's `resolvedAt`)
+reopens that ticket, and reopening mints no session, so ending it early
+would leave the reopened ticket nothing to route to. The stranded-session
+sweep reaps it once the window has passed. Two checks before calling it a
+defect:
+
+```
+fruxon agents topics get <agent> <topic> -o json
+fruxon agents inbox <agent> --participant <participantId> -o json
+fruxon agents topics sessions <agent> <homeTopicId>
+```
+
+- **Age.** A `resolvedAt` less than 48 hours ago is a window still open.
+  Well past it, the sweep should have ended the session; one that is still
+  `RUNNING` is an episode nothing ever closed.
+- **The home session's `endCause`.** The close is recorded on home, not on
+  the ticket. On a console-routed handoff, the home session that held the
+  escalation ending with `CONSOLE_ALREADY_RESOLVED` is the console closing
+  the chat and the conversation being released (`CASE_RESOLVED` when the
+  handoff ran out its TTL instead). Any other shape — home still open after
+  the ticket resolved, or ended for some other cause — means the ticket's
+  close is not what ended home; and a home still open is why nothing handed
+  the conversation back to its console.
+
+And an `endCause` with no `endedAt` is an end that was *requested* and never
+applied; a new inbound message voids it, so it is not an ended episode and
+must not be counted as one.
 
 ## 9b. "Why does this topic exist? Its transcript starts in the middle"
 

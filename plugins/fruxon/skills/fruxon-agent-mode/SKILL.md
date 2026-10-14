@@ -85,6 +85,16 @@ the bypass flag.
 | `keys delete` (no --yes) | Pass `--yes` |
 | `agents tests delete` (no --yes) | Pass `--yes` |
 | `agents budget delete` (no --yes) | Pass `--yes` |
+| `conversation-imports confirm` / `agents reply-style import` (no --yes) | Pass `--yes` — it stores customers' chats and deletes the uploaded files. Who is who is checked first; a refusal (exit 12) says which participants need a role. |
+| `agents reply-style confirm-build` (no --yes) | Pass `--yes` — the build reads the rest of the conversations and spends model credits; the estimate shown is the one confirmed. |
+| `agents reply-style activate` / `off` / `delete` (no --yes) | Pass `--yes` — **but only on the human's say-so.** It changes how the agent writes to customers from their next turn. |
+| `conversation-imports delete`, `agents reply-style detach` / `discard` / `cancel-build` (no --yes) | Pass `--yes`. |
+| `agents improvements approve` (no --yes) | Pass `--yes` — **but only on the human's say-so**, with `--expected-base` and `--version` as you showed them the card (`improvements get -o json`: `baseRevision` is not the live one — read `agents get` for `currentRevision`). It deploys a new revision to all traffic; if either value moved, nothing is sent (exit 13). |
+| `agents improvements settings --on` / `review` (no --yes) | Pass `--yes` — reviewing spends model credits from the review budget every day; `review` spends it on one conversation now. |
+| `agents improvements compare` / `recheck` (no --yes) | Pass `--yes` — every replayed conversation runs the agent twice and a judge once. `--wait` blocks until the runs end; `results` reads them later. |
+| `agents improvements revise` (no --yes) | Pass `--yes` — the reviewer's model reads every confirmed-worse case, charged to the review budget. |
+| `agents evaluations cancel` (no --yes) | Pass `--yes`. |
+| `agents improvements dismiss` (no --yes) | Pass `--yes`. The reviewer reads the reason in every later review, and `WRONG` is never raised again — pick the reason the human gave. |
 | `agents draft evaluate` (no --yes) | Pass `--yes` — it costs real money |
 | `agents approvals respond` / `cancel` (no --yes) | Pass `--yes` — **but stop first.** This responds to a *human-in-the-loop* gate; a response can run the gated tool. Only auto-`--yes` if the human you're acting for explicitly told you to approve/reject this request. Defaulting to approve defeats the gate. |
 | `agents memory forget-subject` (no --yes) | Pass `--yes` — it irreversibly deletes a subject's memories (GDPR forget). |

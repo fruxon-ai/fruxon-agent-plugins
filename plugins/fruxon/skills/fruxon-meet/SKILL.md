@@ -75,11 +75,19 @@ fruxon knowledge-bases correct <kb> <doc> -i "what is wrong"  # let the editor a
 fruxon knowledge-bases consolidate <kb>  # queue a report of near-duplicate clusters; a standalone pass NEVER merges
 fruxon knowledge-bases apply <kb> <run> --cluster <id>  # merge the clusters you accepted from that report (--all for every one)
 fruxon knowledge-bases source list / preview / sync / pause / resume <kb>  # the pipelines that write articles; a built source lands PAUSED
+fruxon agents reply-style import <agent> <exports…> --subject <owner> --yes  # chat exports in, redacted, attached; who is who is checked first
+fruxon agents reply-style build <agent> --wait  # learn a draft reply style; status shows its style + substance check (confirm-build when it sampled)
+fruxon agents reply-style show / activate <agent> <n> --yes  # read the draft as the agent will; activate reaches customers (revisions:deploy)
+fruxon conversation-imports create / get / confirm / conversations  # the imports themselves: preview, roles, what was stored
+fruxon agents improvements list / get <agent>  # what reviews of real conversations say should change; --waiting = the cards an admin should decide on
+fruxon agents improvements test / compare / results <agent> <card>  # try a card's change in the sandbox, replay past conversations with it, read the tally
+fruxon agents improvements approve / dismiss <agent> <card> --yes  # approve deploys the change as a new revision (only on the human's say-so)
 fruxon llm-providers list / models <provider>  # LLM providers + exact model ids (don't guess them)
 fruxon llm-providers configs list / get / test / publish <provider>  # saved LLM credentials; publish switches every agent on it (--yes-gated)
 fruxon metrics list                    # evaluation-metric ids for an LLM judge (judge.rubric.metrics)
 fruxon triggers list / create / bind / fire  # autonomy: fire agents on schedule/event (write surface)
 fruxon triggers preview-shape / test-source <t>  # dry-run a work shape: what each stage sends, what the door lists (--count for how much, startFrom for the first after:, FILTERED for what door.skipWhen drops, and each record as door.projection will store it)
+fruxon applications ledgers <app>      # every automation in an app at once: finished (30d), waiting, open questions, stuck — find which <t> to open
 fruxon triggers ledger funnel / items / cursor <t>  # the work items an automation admitted, what it extracted, what it cost
 fruxon triggers ledger passes <t>      # every time it fired: admitted / dispatched / completed / runs / cost per pass
 fruxon triggers ledger redrive / ignore / settle <t> <item>  # act on a stuck item (--yes-gated)
