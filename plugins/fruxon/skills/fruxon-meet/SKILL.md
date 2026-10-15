@@ -90,6 +90,7 @@ fruxon triggers preview-shape / test-source <t>  # dry-run a work shape: what ea
 fruxon applications ledgers <app>      # every automation in an app at once: finished (30d), waiting, open questions, stuck — find which <t> to open
 fruxon triggers ledger funnel / items / cursor <t>  # the work items an automation admitted, what it extracted, what it cost
 fruxon triggers ledger passes <t>      # every time it fired: admitted / dispatched / completed / runs / cost per pass
+fruxon triggers ledger spend / spend-series / item-series <t>  # what it spent (this period; per day, by agent and part) and what happened to its items per day
 fruxon triggers ledger redrive / ignore / settle <t> <item>  # act on a stuck item (--yes-gated)
 fruxon triggers ledger redrive-many / ignore-many <t>  # the same over a selection (--id/--stage/--status, confirmed count)
 fruxon triggers ledger exclusions <t>   # every reason items were set aside, with counts — the list --ignore-reason is picked from
@@ -99,6 +100,8 @@ fruxon triggers ledger gathering / batch-runs <t>  # a batch stage: what each gr
 fruxon triggers ledger test-stage <t> --stage <id> --item <item> --wait  # run ONE stage in the sandbox; the verdict is what the ledger would do (writes nothing, paid test-budget run)
 fruxon triggers ledger test-stage <t> --stage <id> --item <item> --agent-revision <N> --wait  # the same on an agent revision made without --deploy: test it before it ships
 fruxon triggers ledger test-stage <t> --stage <ask> --item <item> --answer <value>  # an ASK stage: the reply a person would send (--reply for prose); no agent runs
+fruxon triggers ledger test-stage <t> --execution <run> --wait  # replay a real run at its stage, on the data it was handed (the control run)
+fruxon agents draft run <agent> --replay <run> [--stages stages.json]  # the same replay on the agent's draft, under the stage's contract
 fruxon triggers ledger walk <t> --item <item> --answer <ask>=<value> --yes  # chain stage tests through the shape; stopped.code says where a real pass stops (walk-steps / stage-test / cancel-stage-test)
 fruxon triggers set-stages <t> --file + triggers revisions list / restore  # edit a work shape, and undo it
 fruxon participants list / create / enable / disable / delete  # agent-network participants (--yes-gated delete)

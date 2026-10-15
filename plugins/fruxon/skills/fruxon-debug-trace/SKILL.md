@@ -58,6 +58,25 @@ number, email or handle resolves to a participant id directly. `--tool`
 takes `integrationId.toolId` and is backed by the tool-usage projection,
 which lags the newest runs by about a minute.
 
+**When the question is "is this one customer, or everyone?"**, search
+what was said. One complaint, checked against every run in the window:
+
+```
+fruxon agents executions list <agent> --since 2026-10-14T09:30:00Z --until 2026-10-14T12:30:00Z -q "תקלה בשרת"
+fruxon agents executions list <agent> --since 2026-10-14 -q "beta.restigo.co.il"   # who was TOLD this
+```
+
+`executions list --query` matches the run's `subject`, its full input
+(the customer's whole message, which the 200-char `subject` mostly cuts
+off behind the sender line) and its reply, case-insensitively and in any
+language. Don't pull `-n 200 -o json` and grep `subject` instead: it
+misses everything past the cut and every run past the page. It needs
+`--since` and searches at most 31 days per call, so slide the window
+for longer. A run that failed, was cancelled or is still running has no
+stored input or reply, so it matches on its `subject` alone. Search for
+the customer's words in their own language and spelling, and try a
+shorter stem (`התחבר` catches `להתחבר` and `מתחבר`).
+
 Each row carries `subject` (a one-line "who and what"), `deliveryStatus`
 and `runType`. **`COMPLETED` is not `DELIVERED`** — a run can finish
 cleanly while its reply is withheld or never lands, and only
@@ -108,7 +127,9 @@ asking about a consult returns the tree that consult sits in.
 
 ## 3. Read the step tree
 
-Text output renders the whole tree, one line per step:
+Text output renders the whole tree, one line per step. Under agent mode
+(Claude Code, CI) the default is JSON: pass `-o text` for the tree, or
+`--show-io` / `--show-thinking`, which pick the text tree on their own.
 
 ```
 ✓ Trace · 20 step(s) · COMPLETED · 1 error(s)
@@ -148,6 +169,32 @@ A `result 48,113 → 212 chars · offloaded to file` (or `· projected
 <selector>`) line means the model was not handed the result as the tool
 returned it — see §5.
 
+**A quality check prints its verdict.** A step whose replies pass a
+blocking check has a `JUDGE` step under each `LLM_STEP` try, and the
+line beneath it says what the check decided:
+
+```
+1.1  LLM_STEP · LLM Query  (SUCCESS · 26.8s · vertex_ai_gemini/gemini-3.8-flash)
+  1.1.1  TOOL · Search Assets  (SUCCESS · 445ms · assets/search_assets)
+  1.1.2  JUDGE · LLM Query  (SUCCESS · 2.9s · vertex_ai_gemini/gemini-3.7-flash)
+      verdict 1.0 · customInstructions 1.0 — all claims supported
+```
+
+`verdict` is the weighted aggregate, followed by each criterion's score
+and the judge's rationale. With several criteria, each one gets its own
+line. `--show-io` adds the judge's `summary`. The trace does not record
+the threshold, so this line never says "passed". A refusal is read from
+the steps around the check, and a line beneath the verdict names it:
+
+| Line | What the trace shows |
+|---|---|
+| `✗ rejected — rewritten as 1.2` | Another `LLM_STEP` try followed. Only a refusal brings another try, so every try but a step's last was refused. |
+| `✗ rejected — no retries left, so the step failed` | The last try was refused too. The `LLM_STEP`'s own error line carries the score and the threshold. |
+| `✗ rejected — handed to a person (1.1.3)` | In a live conversation the step escalates instead of failing. The `escalate_to_human` step after the check is that hand-off. |
+| `▲ no verdict — the reply went out unchecked` | The check itself failed (its error is on the line above). A first draft is let through rather than held. |
+
+No line beneath the verdict means the reply went out with that verdict.
+
 **The JSON shape.** `--output json` is where the real detail lives, and
 the shape is not what the top-level key names suggest:
 
@@ -180,6 +227,10 @@ and its label is `displayName`. Useful one-liners:
 
 # what the run is blocked on
 … trace <agent> <id> -o json | jq '.waitingFor'
+
+# every quality-check verdict — result.strValue is a JSON string
+… trace <agent> <id> -o json | jq '.. | objects | select(.type=="JUDGE")
+  | .result.strValue? // empty | fromjson | {aggregate, metrics, summary}'
 ```
 
 `jq`'s recursive descent (`..`) is the right tool here — writing out
@@ -410,9 +461,18 @@ A step's output is rarely the mystery. The mystery is the state it read.
   agent edit is tested before deploying it: `fruxon agents revisions create
   <agent> --file rev.json` (no `--deploy`), then `test-stage …
   --agent-revision <N> --wait` (the step shows `rev N (not deployed)`), then
-  `fruxon agents revisions deploy <agent> <N>` once the verdict is right —
-  never push it as the agent's draft and `agents draft run` it, which skips
-  the stage's contract. A batch stage runs the item as a
+  `fruxon agents revisions deploy <agent> <N>` once the verdict is right.
+  Never hand-compose a stage's `user_query` into a plain `agents draft run
+  -p` — that run carries none of the stage's output contract, so its answer
+  is not what a pass would get. To try an edit still in the agent's
+  **draft** on a real run, `fruxon agents draft run <agent> --replay
+  <execution-record-id>` (optionally `--file <agent>.draft.json` and
+  `--stages stages.json` for edited instructions) replays that run as a
+  stage test on the draft: the data the run was handed, the stage's
+  contract, nothing written. `test-stage <trigger-id> --execution
+  <execution-record-id> [--agent-revision <N>] --wait` is the control: the
+  same input on the deployed (or another) revision — run both before
+  blaming a prompt change. A batch stage runs the item as a
   batch of one. An ASK stage runs no agent: test it with the reply the
   person would send — `--answer <value>` (applied as is, no model) or
   `--reply <text>` (read by a model, as a real reply is) — and a reply that
@@ -463,6 +523,12 @@ A step's output is rarely the mystery. The mystery is the state it read.
   *where* the money goes rather than only how much; a `Cost` of `—` there
   means nothing in the cell has ever been claimed, as against `$0.0000`,
   which means it ran and was genuinely free.
+  The automation's whole bill — item runs plus the conversations its
+  questions are held in and its report — is `fruxon triggers ledger spend
+  <trigger-id>`: the current UTC calendar week (or `--period daily|monthly`)
+  by agent and part, the figure its spend chip shows; `ledger spend-series`
+  is the same per day. It is not the funnel's `cost`, which files item runs
+  under the cell each item sits in *now*: the two overlap, so never add them.
 - **"Too few items" needs the size of the backlog, not a sample of it.**
   `fruxon triggers test-source <trigger-id>` lists a page of what the door
   returns right now; a full page comes back saying *more available*, which
@@ -575,6 +641,14 @@ practice the answer is usually one of: a watermark or filter excluded
 more than you thought; a dedupe rule collapsed rows; the result was
 truncated before the model saw it (`resultDelivery`); or the deployed
 `systemInstructions` are not the prompt you have open in your editor.
+
+**A quality check passed the wrong reply.** When the step has a check,
+its verdict is printed under the `JUDGE` step (§3). A high score beside a
+wrong reply means the check is part of the defect too. Compare its
+rationale with the tool results it judged from (`--show-io`). A grounding
+check confirms that each claim has a source. It does not confirm that the
+source was the right one for this customer, so a reply that applied the
+wrong knowledge-base article still scores "all claims supported".
 
 ## 8. "The agent went quiet and I cannot see why"
 

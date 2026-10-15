@@ -82,6 +82,7 @@ the bypass flag.
 |---|---|
 | `fruxon login` (no key) | Pass `--token $FRUXON_TOKEN` |
 | `fruxon agents draft run --edit` | Pass the value via `-p key=value` or `--params file.json` |
+| `agents draft run --file <other>` replacing an existing server draft (a file other than the pulled one, or `-`) | `--restore` to run it as a one-off and put the current draft back afterwards (what you want for a control/A-B variant), or `--yes` to keep it in the draft. The server draft is what `revisions create` publishes. |
 | `keys delete` (no --yes) | Pass `--yes` |
 | `agents tests delete` (no --yes) | Pass `--yes` |
 | `agents budget delete` (no --yes) | Pass `--yes` |
@@ -241,6 +242,7 @@ don't infer from `result` shape. The `done` record carries the
 | `type` | When | Key fields |
 |---|---|---|
 | `start` | First | `schema_version`, `agent` |
+| `draft` | `--file` runs only, right after `start` | `action` (`replaced` / `created` / `unchanged`), `file`, `tracked`, `from_version`, `to_version`, `restore`, `sidecar` (`updated` / `created` / `untouched`) |
 | `text` | LLM streamed text | `delta` |
 | `tool_call` | Agent dispatched a tool | `id`, `name`, `arguments`, `integration_id`, `tool_type` |
 | `tool_result` | Tool finished | `id`, `status`, `result`, `end_time_ms` |
@@ -263,6 +265,16 @@ of the trace fields — same `type: "done"`, distinguished by the
 {"type":"done","agent":"my-agent","record_id":"rec-99","session_id":"sess-1",
   "status":"waiting_for_human","human_approval_request_id":"har-7"}
 ```
+
+**The `draft` record.** The server only runs its stored draft, so
+`draft run --file` pushes the body into the server draft first. The
+`draft` record says what that did: `replaced` with `restore: false`
+means the draft `revisions create` publishes from now holds `file`
+(`from_version` → `to_version`). With `--restore` the previous head is
+pushed back when the run ends (success or failure); a restore that
+loses a race exits `13` and saves the previous head under
+`.fruxon/agents/restore/`. `--output json` (non-streamed) carries the
+same object as a top-level `draft` key, plus `restored_version`.
 
 **Step traces.** `fruxon agents draft run` additionally emits
 `{"type":"step_trace","id":"…","name":"…","step_type":"LlmStep",

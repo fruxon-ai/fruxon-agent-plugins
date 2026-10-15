@@ -133,6 +133,12 @@ revision from it.
    stamped with `Origin=TEST` so it never mixes with production
    metrics (see "Origins" below). In agent mode this emits NDJSON
    (one event per line on stdout).
+   **`--file` writes the server draft** — the server can only run its
+   stored draft, and that draft is what `revisions create` publishes.
+   The pulled file is pushed like `draft push`. To run any *other* body
+   (a control, the previous revision, an A/B variant), pass
+   `--restore` so the draft you're about to ship is put back after the
+   run; without `--restore` or `--yes` the CLI refuses in agent mode.
 7. **Publish**: `fruxon agents revisions create <agent> --file <agent>.draft.json --deploy`
    mints the immutable revision and deploys it.
 8. **Audit the wiring**: `fruxon agents check <agent>` — a deployed agent
@@ -206,9 +212,12 @@ have nothing better). The `create --schema` output currently marks it
 Leave `type` off — the server defaults it; don't set it at create.
 
 `draft run --file` runs the body **without minting a revision**, so you
-iterate freely before anything is published; the first run also writes
-the local `<id>.draft.json` sidecar, so later `draft run` / `status` /
-`push` work without flags. When the body is good,
+iterate freely before anything is published. It does save the body as
+the agent's server draft; when nothing was pulled yet, the first run
+also starts tracking `body.json` (sidecar `.fruxon/agents/<id>.meta.json`),
+so later `draft run` / `status` / `push` work without flags. Once a file
+is tracked, running a *different* file needs `--restore` (one-off) or
+`--yes` (keep it in the draft). When the body is good,
 `revisions create --deploy` mints the immutable revision and makes it
 live. (Heads-up: the **first** revision becomes current on create even
 without `--deploy` — harmless until the agent is wired to a
