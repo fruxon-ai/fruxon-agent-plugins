@@ -86,6 +86,7 @@ the bypass flag.
 | `keys delete` (no --yes) | Pass `--yes` |
 | `agents tests delete` (no --yes) | Pass `--yes` |
 | `agents budget delete` (no --yes) | Pass `--yes` |
+| `triggers budget delete` (no --yes) | Pass `--yes` |
 | `conversation-imports confirm` / `agents reply-style import` (no --yes) | Pass `--yes` — it stores customers' chats and deletes the uploaded files. Who is who is checked first; a refusal (exit 12) says which participants need a role. |
 | `agents reply-style confirm-build` (no --yes) | Pass `--yes` — the build reads the rest of the conversations and spends model credits; the estimate shown is the one confirmed. |
 | `agents reply-style activate` / `off` / `delete` (no --yes) | Pass `--yes` — **but only on the human's say-so.** It changes how the agent writes to customers from their next turn. |

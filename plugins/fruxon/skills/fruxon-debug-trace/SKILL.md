@@ -78,7 +78,10 @@ the customer's words in their own language and spelling, and try a
 shorter stem (`התחבר` catches `להתחבר` and `מתחבר`).
 
 Each row carries `subject` (a one-line "who and what"), `deliveryStatus`
-and `runType`. **`COMPLETED` is not `DELIVERED`** — a run can finish
+and `runType`. A run that is part of an automation also carries
+`automationId`: the trigger it belongs to, whatever started it. For a
+person's reply to an automation's question, `trigger` is their channel,
+and `automationId` is the only link back to the automation. **`COMPLETED` is not `DELIVERED`** — a run can finish
 cleanly while its reply is withheld or never lands, and only
 `deliveryStatus` says so.
 
@@ -91,7 +94,10 @@ Statuses, mirroring the backend's `AgentExecutionRecordStatus`:
   parked on lives in the trace's `waitingFor.kind`, never in the status.
 - **`REJECTED` never ran.** Blocked at the pre-flight gate (cost budget,
   exhausted credits, invalid licence), so there is no trace to read —
-  the record's rejection reason is the whole story.
+  the record's rejection reason is the whole story. The budget can be the
+  agent's (`fruxon agents budget list <agent>`) or, for a run with an
+  `automationId`, the automation's own (`fruxon triggers budget list
+  <automationId>`).
 - `--origin` defaults to `PRODUCTION`. Your own `agents draft run`
   invocations are `TEST`-origin and are invisible until you ask.
 
@@ -529,6 +535,10 @@ A step's output is rarely the mystery. The mystery is the state it read.
   by agent and part, the figure its spend chip shows; `ledger spend-series`
   is the same per day. It is not the funnel's `cost`, which files item runs
   under the cell each item sits in *now*: the two overlap, so never add them.
+  What the automation is *allowed* to spend is `fruxon triggers budget list
+  <trigger-id>`: its own daily / weekly / monthly limits, each with the
+  window's spend. An enforced one that is spent holds every stage until the
+  window resets, and its agents' own limits apply beside it.
 - **"Too few items" needs the size of the backlog, not a sample of it.**
   `fruxon triggers test-source <trigger-id>` lists a page of what the door
   returns right now; a full page comes back saying *more available*, which

@@ -69,6 +69,7 @@ fruxon assets create/list/get/wait/delete  # the indexed RAG assets an agent's a
 fruxon assets search/documents/chunks <a>  # what the INDEX holds — distinct from the authored corpus below
 fruxon knowledge-bases list / get / create / update  # the authored, reviewable corpus behind a manual_knowledge asset
 fruxon knowledge-bases publish <kb>    # the step that makes authored knowledge findable; only PUBLISHED documents travel
+fruxon knowledge-bases usage <kb>      # whether agents search it: searches per day, tokens retrieved, found-nothing, who searched
 fruxon knowledge-bases documents / document / add-document / edit-document <kb>  # the articles themselves
 fruxon knowledge-bases review-queue / revisions / evidence <kb>  # what needs a human, who changed what, where it came from
 fruxon knowledge-bases correct <kb> <doc> -i "what is wrong"  # let the editor agent fix it; it MAY decline, which writes nothing
@@ -91,6 +92,7 @@ fruxon applications ledgers <app>      # every automation in an app at once: fin
 fruxon triggers ledger funnel / items / cursor <t>  # the work items an automation admitted, what it extracted, what it cost
 fruxon triggers ledger passes <t>      # every time it fired: admitted / dispatched / completed / runs / cost per pass
 fruxon triggers ledger spend / spend-series / item-series <t>  # what it spent (this period; per day, by agent and part) and what happened to its items per day
+fruxon triggers budget list / set / delete <t>  # the automation's own spend limits, across every agent it runs (delete --yes-gated)
 fruxon triggers ledger redrive / ignore / settle <t> <item>  # act on a stuck item (--yes-gated)
 fruxon triggers ledger redrive-many / ignore-many <t>  # the same over a selection (--id/--stage/--status, confirmed count)
 fruxon triggers ledger exclusions <t>   # every reason items were set aside, with counts — the list --ignore-reason is picked from
