@@ -70,6 +70,7 @@ fruxon assets search/documents/chunks <a>  # what the INDEX holds — distinct f
 fruxon knowledge-bases list / get / create / update  # the authored, reviewable corpus behind a manual_knowledge asset
 fruxon knowledge-bases publish <kb>    # the step that makes authored knowledge findable; only PUBLISHED documents travel
 fruxon knowledge-bases usage <kb>      # whether agents search it: searches per day, tokens retrieved, found-nothing, who searched
+fruxon knowledge-bases notices / notice / post-notice / edit-notice / extend-notice / withdraw-notice <kb>  # time-boxed notices (an outage, a known bug) every agent is given next turn; no publish
 fruxon knowledge-bases documents / document / add-document / edit-document <kb>  # the articles themselves
 fruxon knowledge-bases review-queue / revisions / evidence <kb>  # what needs a human, who changed what, where it came from
 fruxon knowledge-bases correct <kb> <doc> -i "what is wrong"  # let the editor agent fix it; it MAY decline, which writes nothing
@@ -109,7 +110,7 @@ fruxon triggers set-stages <t> --file + triggers revisions list / restore  # edi
 fruxon participants list / create / enable / disable / delete  # agent-network participants (--yes-gated delete)
 fruxon applications list / get / roles # the container that owns agents; `roles` = who holds each roster role
 fruxon applications entry-points list [<app>]  # how inbound reaches an agent; no <app> = every claimed address
-fruxon applications entry-points connect/attach/move/detach <app>  # wire a doorway (connect prints the webhook URL once)
+fruxon applications entry-points connect/attach/move/disconnect <app>  # wire a doorway (connect prints the webhook URL once)
 fruxon environments list / get / create / update / archive  # end-customer environments (slugs runs attribute to)
 fruxon capabilities list / create / update / delete  # consult-routing vocabulary
 fruxon participants bind / roster <p> <agent> + fruxon agents roster <agent>  # consult wiring

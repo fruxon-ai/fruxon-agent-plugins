@@ -354,8 +354,13 @@ cuts a result sets `offloaded`.
 `LLM_STEP` steps carry:
 
 ```
-llmStepTrace.systemInstructions  # the deployed prompt — an ARRAY of
-                                 # message records, not one string
+llmStepTrace.systemInstructions  # the system prompt the run carried — an
+                                 # ARRAY of message records, MOST of them
+                                 # platform blocks, not the author's prompt
+llmStepTrace.systemBlocks        # index-aligned labels for those records:
+                                 # {descriptor, variant, tag, region, chars};
+                                 # region is LEAD | STABLE | VOLATILE
+llmStepTrace.systemCacheBreakpointIndex  # last cached record; -1 = all
 llmStepTrace.reasoningBlocks     # the model's own account of why
 llmStepTrace.llmMessages         # the conversation turns
 llmStepTrace.tools               # the tools the step had available
@@ -366,6 +371,27 @@ llmStepTrace.{input,output,cached,thinking}Tokens and matching costs
 the question is "why did it decide that" — it often names the rule it
 was following. `systemInstructions` lets you read the prompt the run
 *actually* executed rather than the file you think is deployed.
+
+**Most of `systemInstructions` is not the author's prompt.** Identity,
+`<knowledge_base>`, `<escalate_to_human>`, `<who_you_are_talking_to>` and
+the rest are blocks the platform adds; the author's prompt is one record
+among them (`descriptor: "author_prompt"` in `systemBlocks`). Use
+`systemBlocks` to tell them apart — it is recorded even when the text
+isn't captured, and it is the only reliable count, because a step whose
+system prompt repeats an earlier step's has its `systemInstructions`
+emptied. `--show-system` prints them labelled, with sizes and the cache
+breakpoint; add `--show-io` for the text:
+
+```
+fruxon agents executions trace <agent> <id> --show-system
+fruxon agents executions trace <agent> <id> --show-system --show-io
+```
+
+Never copy a platform block's text out of a trace into a prompt — the
+platform adds it anyway, so the agent would carry it twice. To see the
+blocks for a draft before it runs, `fruxon agents system-blocks <agent>`.
+A trace recorded before the labels existed names a block by the tag on
+its first line, else `(unlabelled)`.
 
 `--show-thinking` prints the reasoning inline, the way `--show-io` does
 for tool payloads, so you do not have to drop to `jq` for the one field
@@ -629,6 +655,22 @@ A step's output is rarely the mystery. The mystery is the state it read.
   query — may be the problem: `fruxon assets documents <asset-id>` shows
   what was ingested, and a `chunkCount` of 0 is a file that produced no
   indexable text at all.
+- **An answer that follows a notice, not an article.** A knowledge
+  notice (an outage, a known bug) is given to every agent attaching the
+  base on every turn while it is active, and the agent is told it
+  overrides what articles and search results say about the same thing.
+  The step trace keeps the block the agent saw:
+
+  ```
+  … trace <agent> <id> -o json | jq '.. | objects | select(.knowledgeNotices) | .knowledgeNotices'
+  fruxon knowledge-bases notice <kb> <notice-id>
+  ```
+
+  `text` is the block as given, `noticeIds` the notices in it, active and
+  ended alike: a conversation that was given one is told on its next turn
+  that it ended. A wrong answer during an incident is usually the notice's
+  wording (its *Applies when* too broad); `edit-notice` fixes it from the
+  next turn, and `withdraw-notice` ends it.
 - **Compare against the previous run.** `executions list`, take the run
   before, trace it, and diff the inputs. A watermark, a roster size, a
   memory value: one of them moved.

@@ -125,6 +125,9 @@ revision from it.
    parameter names, its required parameters) —
    the referential traps that otherwise deploy clean then fail (or return
    nothing) at run. Worth running once right before `revisions create`.
+   Writing or reworking the system prompt? Run
+   `fruxon agents system-blocks <agent>` first, to see what the platform
+   already adds around it — see "Platform blocks" below.
 5. **Sync the draft**: `fruxon agents draft push <agent>` saves your
    edits to the server-side draft. It is visible in an open studio
    within ~1s, and reversible with `fruxon agents draft undo`.
@@ -434,6 +437,34 @@ server rejects it. `draft validate` says so with a single
 answers in the definition shape now, so the flag's job is trimming the
 server-stamped fields a create would reject — it still collapses the older
 flow shape if you point it at a cell serving one.
+
+## Platform blocks: don't restate them
+The model never sees `systemPrompt` alone. The platform adds blocks around
+it — identity, `<knowledge_base>`, `<natural_silence>`,
+`<escalate_to_human>`, `<who_you_are_talking_to>`,
+`<looked_up_before_this_turn>` and more — each switched on by a setting or
+by the kind of run. A prompt that restates one pays for it on every call
+and drifts when the platform's wording changes.
+
+- **Before writing or reworking a system prompt, see them** for this agent:
+
+  ```
+  fruxon agents system-blocks <agent>                             # the pulled draft, unpushed edits included
+  fruxon agents system-blocks <agent> --run-kind all              # which kinds of run carry which block
+  fruxon agents system-blocks <agent> --block escalate_to_human   # what a block already says
+  ```
+
+- **Don't restate a block.** If `<escalate_to_human>` already says when and
+  how to hand over, the prompt says only what is particular to this agent.
+- **Reference a block by its tag only when the prompt has to say something
+  about it** ("treat `<who_you_are_talking_to>` as the account holder").
+  Tags are what the platform keeps stable; a block's prose is not.
+- **Never copy block text out of a trace.** Most of a trace's
+  `systemInstructions` is platform blocks (`executions trace --show-system`
+  labels them); pasted into the prompt, every one is sent twice.
+- **Before `push`, run `fruxon agents system-blocks <agent> --check`.** It
+  exits 12 when the reference lint flags a tag the prompt names (renamed, or
+  a block this agent never gets) or when the draft's plan can't be built.
 
 ## Placeholders in prompts (PromptTemplate.template)
 Double-brace `{{ expression }}`. Canonical forms:

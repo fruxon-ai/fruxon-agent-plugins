@@ -107,6 +107,8 @@ the bypass flag.
 | `capabilities delete` (no --yes) | Pass `--yes` — removes the capability from the routing vocabulary. |
 | `participants unbind` (no --yes) | Pass `--yes` — removes the participant from the agent's consult roster. |
 | `consult-pins delete` (no --yes) | Pass `--yes` — removes the deterministic routing override. |
+| `knowledge-bases withdraw-notice` (no --yes) | Pass `--yes` — **but only on the human's say-so.** Agents stop being given the notice on their next turn, and each conversation that was given it is told there that it ended. A notice that already ended is reported and nothing is sent. |
+| `knowledge-bases archive` / `delete` / `apply` / `delete-document` / `correct`, `knowledge-bases source sync` / `resume` / `fork` / `delete` (no --yes) | Pass `--yes`. `delete` and `delete-document` cannot be undone; `archive` is the reversible path for a base. |
 
 ## Workspaces — one key each, named per command
 
