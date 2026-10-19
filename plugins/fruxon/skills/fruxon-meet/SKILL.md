@@ -99,6 +99,9 @@ fruxon triggers ledger redrive-many / ignore-many <t>  # the same over a selecti
 fruxon triggers ledger exclusions <t>   # every reason items were set aside, with counts — the list --ignore-reason is picked from
 fruxon triggers ledger redrive-many <t> --ignore-reason "<recorded reason>"  # undo the exclusions one revised instruction made
 fruxon triggers ledger batches <t> --open-only  # what it is waiting on a human for; read `delivery` — UNDELIVERABLE means nobody was asked
+fruxon triggers ledger batches <t> --answers <batch>     # what a question was answered with: what the person gave beside what was handed back
+fruxon triggers ledger batches <t> --transcript <batch>  # the conversation it was asked in, read under the agent that owns it
+fruxon triggers ledger items <t> --where destination=SKIP  # items by what a stage wrote into `data` (`!=` too, repeatable)
 fruxon triggers ledger gathering / batch-runs <t>  # a batch stage: what each group waits on, and the runs over groups (cancel-batch-run, --yes-gated)
 fruxon triggers ledger test-stage <t> --stage <id> --item <item> --wait  # run ONE stage in the sandbox; the verdict is what the ledger would do (writes nothing, paid test-budget run)
 fruxon triggers ledger test-stage <t> --stage <id> --item <item> --agent-revision <N> --wait  # the same on an agent revision made without --deploy: test it before it ships

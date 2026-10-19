@@ -748,7 +748,9 @@ semantics.
   newer revisions sit above the one that runs. `fruxon agents revisions
   list <agent>` marks the live one with ★, and `agents revisions deploys
   <agent>` shows who deployed what, when. Read both before building on
-  `revisions get` with no number, which fetches the live revision.
+  `revisions get` with no number (or `--current`), which fetches the live
+  revision. Every `revisions get` body leads with `isCurrent` and
+  `currentRevision`, so a numbered read says whether it is the live one.
 
 ## Server errors at create-time, by message
 The pitfalls above are the ones `draft validate` catches. These arrive

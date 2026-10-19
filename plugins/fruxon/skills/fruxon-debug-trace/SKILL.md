@@ -55,8 +55,21 @@ fruxon agents executions list <agent> --with-tool-errors -n 20
 
 `--query` matches channel addresses and linked account ids, so a phone
 number, email or handle resolves to a participant id directly. `--tool`
-takes `integrationId.toolId` and is backed by the tool-usage projection,
-which lags the newest runs by about a minute.
+takes `integrationId.toolId` or the name a trace shows ("Search
+Clients"), and is backed by the tool-usage projection, which lags the
+newest runs by about a minute.
+
+**When the question is "what did that tool return, across runs?"**, don't
+pull traces one by one. `--calls` adds each call's arguments and a result
+preview under its run (`toolCalls[]` in JSON), and `--result-nonempty`
+keeps only runs where the tool succeeded with something to show:
+
+```
+fruxon agents executions list <agent> --tool "Search Clients" --result-nonempty --since 2026-10-17 -n 200 -o json
+```
+
+It reads one trace per listed run and filters only those, so size `-n`
+and the window to cover the runs you mean.
 
 **When the question is "is this one customer, or everyone?"**, search
 what was said. One complaint, checked against every run in the window:
@@ -526,6 +539,20 @@ A step's output is rarely the mystery. The mystery is the state it read.
   is not a fault; the contact is queue-bound and the pending row is itself the
   operator-queue item. The way out is `fruxon triggers questions answer` out of
   band, or `ledger cancel-batch`, which returns the items to READY.
+- **An answered item went somewhere wrong: compare what was given with what
+  was handed back.** `fruxon triggers ledger batches <trigger-id> --answers
+  <batch>` lists, per item, `given` (what the person wrote — the sheet cell or
+  their words, as the conducting agent copied them), `answer` (what the batch
+  was handed back and wrote into the item) and `current` (what the item holds
+  at that path now); `mismatch` marks where `given` and `answer` differ, which
+  is where the agent's reading went wrong (PassportCard: "מעודכנת" handed back
+  as `SKIP`). A batch answered before the server recorded answers, or by an
+  agent that sent no `given`, gets `given` from the resolving run's sheet read
+  (`givenFrom: "trace"`). The conversation itself is `--transcript <batch>`:
+  a batch's conversation belongs to the stage's **asking** agent, not the desk
+  agent that conducts it, so `agents topics messages <desk> <topic>` 404s —
+  a current server names the owner in that 404. To find every item a value
+  landed on, `ledger items <trigger-id> --where destination=SKIP`.
 - **A READY item at a batch stage may be gathering, not stuck.** A stage with
   a `batch` block runs its items in groups, and an item waits READY until its
   group closes — full, its oldest item has waited the window, or nothing
@@ -564,7 +591,10 @@ A step's output is rarely the mystery. The mystery is the state it read.
   What the automation is *allowed* to spend is `fruxon triggers budget list
   <trigger-id>`: its own daily / weekly / monthly limits, each with the
   window's spend. An enforced one that is spent holds every stage until the
-  window resets, and its agents' own limits apply beside it.
+  window resets. While any of its limits is enforced, those are the only
+  limits its runs meet: its agents' own limits neither stop nor count them
+  (a run record's `automationGoverned` says so). With none enforced, each
+  stage stops at its agent's own limit.
 - **"Too few items" needs the size of the backlog, not a sample of it.**
   `fruxon triggers test-source <trigger-id>` lists a page of what the door
   returns right now; a full page comes back saying *more available*, which
