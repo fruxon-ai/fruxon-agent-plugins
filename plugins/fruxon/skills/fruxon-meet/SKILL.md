@@ -64,6 +64,7 @@ fruxon agents sandbox test <file|dir>  # run scenario e2e tests of an agent (exi
 fruxon integrations list / create
 fruxon integrations authorize <integration>  # mint an OAuth connect link for a human to click (auto-detects the method)
 fruxon integrations triggers <integration>  # event types (+ payload paths) an integration can fire an agent on
+fruxon integrations configs list / get / update / publish <integration>  # saved credentials; update edits the draft, publish makes it live
 fruxon tools list <integration> / create
 fruxon assets create/list/get/wait/delete  # the indexed RAG assets an agent's assetConfig attaches
 fruxon assets search/documents/chunks <a>  # what the INDEX holds — distinct from the authored corpus below

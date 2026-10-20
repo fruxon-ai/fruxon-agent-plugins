@@ -27,6 +27,14 @@ You are now operating as a Fruxon integrations specialist.
   needs. `fruxon integrations configs get <integration> <config>`
   prints one config's full payload (auth shape, `publishedRevisionId`)
   — use it to confirm a config is published before pointing a slot at it.
+- `fruxon integrations configs update <integration> <config> --file <patch.json>`
+  changes a config's **draft**: the file holds only the fields to change
+  (e.g. `{"egressCountry": ""}` clears an egress pin). Tool calls keep
+  resolving the **published** revision, so follow with
+  `fruxon integrations configs publish <integration> <config> --yes`, which
+  every agent using the config picks up on its next call — ask the human
+  first. Don't collect secrets in chat to put in a patch: credentials are
+  entered in the dashboard.
 - `fruxon integrations get <id>` — catalog metadata for one
   integration (description, tags). (It does not report auth status —
   use `configs list` for that.)

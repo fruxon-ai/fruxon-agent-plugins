@@ -103,6 +103,7 @@ the bypass flag.
 | `triggers fire` (no --yes) | Pass `--yes` — it runs the bound agent(s) now (cost + side effects). |
 | `triggers ledger walk` (no --yes) | Pass `--yes` — every step is a paid model run on the agent's test budget (up to `--max-steps`, default 10). It writes nothing; read `stopped.code` in the JSON, since it exits 0 whenever it ran. |
 | `triggers delete` / `unbind` (no --yes) | Pass `--yes` — removes the trigger / its agent wiring. |
+| `integrations configs publish` (no --yes) | Pass `--yes` — **but only on the human's say-so.** Every tool call that resolves the config switches to the new revision immediately. |
 | `participants delete` (no --yes) | Pass `--yes` — removes the participant from the network. |
 | `capabilities delete` (no --yes) | Pass `--yes` — removes the capability from the routing vocabulary. |
 | `participants unbind` (no --yes) | Pass `--yes` — removes the participant from the agent's consult roster. |
