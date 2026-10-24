@@ -137,7 +137,7 @@ fruxon --workspace acme-corp agents list       # run against one, whatever the d
 fruxon agents list --workspace acme-corp       # same, flag on the command
 fruxon --workspace acme-corp whoami            # which key + host that resolves to, and why
 fruxon workspaces use acme-corp                # change the default
-fruxon login --workspace acme-corp             # add one (does NOT evict the others)
+fruxon login --workspace acme-corp             # add one (does NOT evict the others or move the default)
 fruxon logout --workspace acme-corp            # drop one; --all drops every one
 ```
 
@@ -156,7 +156,9 @@ the caller exporting it is the one asserting the two match.
 
 `fruxon login` is additive and never prompts to replace a stored key, so
 it has no interactive guard beyond needing a browser (see Interactive
-guards above).
+guards above). It also leaves the default where it was — other sessions on
+the machine share it — unless you pass `--set-default`. Prefer
+`--workspace` per command over moving the default.
 
 ## Discovery — one call to learn the whole CLI
 
@@ -281,9 +283,11 @@ loses a race exits `13` and saves the previous head under
 same object as a top-level `draft` key, plus `restored_version`.
 
 **Step traces.** `fruxon agents draft run` additionally emits
-`{"type":"step_trace","id":"…","name":"…","step_type":"LlmStep",
-"status":"succeeded","duration_ms":1234}` when each flow step
-finishes — useful for CI gates that need per-step cost attribution.
+`{"type":"step_trace","id":"…","name":"…","step_type":"LLM_STEP",
+"status":"succeeded","duration_ms":1234}` as each step of the run (an
+LLM call, an approval wait) starts and finishes — useful for CI gates
+that need per-step cost attribution. Tool calls come as `tool_call` /
+`tool_result` instead.
 
 On failure, a single `{"type":"error","message":"…","code":"…"?}`
 record is emitted before exit. The schema_version field on `start`

@@ -155,7 +155,7 @@ Text output renders the whole tree, one line per step. Under agent mode
    agent      emailpoliciesparser (revision 59)
    duration   11m 23s
 
-   1  FLOW_STEP · Agent  (SUCCESS · 19.4s)
+   1  Agent  (SUCCESS · 19.4s)
      1.1  LLM_STEP · LLM Query  (SUCCESS · google/gemini-3.5-flash)
        1.1.2  TOOL · Search Emails  (SUCCESS · 4.8s · google_gmail/search)
        1.1.3  TOOL · Spawn Subtasks (batch)  (SUCCESS · 36.7s · system/spawn_subtasks)
@@ -188,7 +188,7 @@ A `result 48,113 → 212 chars · offloaded to file` (or `· projected
 <selector>`) line means the model was not handed the result as the tool
 returned it — see §5.
 
-**A quality check prints its verdict.** A step whose replies pass a
+**A quality check prints its verdict.** An agent whose replies pass a
 blocking check has a `JUDGE` step under each `LLM_STEP` try, and the
 line beneath it says what the check decided:
 
@@ -225,7 +225,7 @@ the shape is not what the top-level key names suggest:
   "waitingFor":       { … },          # only while suspended
   "trace": {
     "agentId", "agentRevision", "startTime", "endTime",
-    "traces": [                        # ← the flow's top-level steps
+    "traces": [                        # ← the run's top-level steps; an agent's run is one frame
       { "id", "displayName", "type": "FLOW_STEP", "status", "duration",
         "steps": [                     # ← nested, recursively
           { "type": "LLM_STEP", "llmStepTrace": { … }, "steps": [ … ] },
@@ -253,8 +253,8 @@ and its label is `displayName`. Useful one-liners:
 ```
 
 `jq`'s recursive descent (`..`) is the right tool here — writing out
-`.trace.traces[0].steps[0].steps[3]` by hand breaks the moment the flow
-gains a step.
+`.trace.traces[0].steps[0].steps[3]` by hand breaks the moment the run
+makes one more tool call.
 
 ## 4. If the run is suspended
 

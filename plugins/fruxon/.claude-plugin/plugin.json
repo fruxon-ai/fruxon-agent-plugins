@@ -1,6 +1,6 @@
 {
   "name": "fruxon",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Build, run, and debug Fruxon agents from Claude Code through the fruxon CLI",
   "author": {
     "name": "Fruxon",

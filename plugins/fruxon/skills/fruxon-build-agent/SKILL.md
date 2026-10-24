@@ -43,9 +43,9 @@ revision from it.
    - `fruxon llm-providers list` — see providers + models
      (don't guess model names; they change)
    - `fruxon llm-providers configs list <provider>` — the tenant LLM
-     config ids; pin a published one on a step via
+     config ids; pin a published one on the definition via
      `provider.tenantConfigId`. `vertex_ai_gemini` and `vertex_ai_maas`
-     share `vertex_ai`'s credential: their steps pin a `vertex_ai` config,
+     share `vertex_ai`'s credential: agents on them pin a `vertex_ai` config,
      which the list shows (its `providerId` reads `vertex_ai`), and a new
      one is created under `vertex_ai`. `configs test <provider> <id>` probes a
      config's credentials; `configs publish` ships a draft — and switches
@@ -53,7 +53,7 @@ revision from it.
      an agent driver)
    - `fruxon assets create --file ./docs.pdf -o id` — create a
      file-backed knowledge-base (RAG) asset from the CLI. Then run
-     `fruxon assets wait <id>` before wiring it into a step; ingestion is
+     `fruxon assets wait <id>` before wiring it into an agent; ingestion is
      async, and an asset is not searchable until its operation completes.
      `fruxon assets list` / `get <id>` show existing asset ids and
      queryable status for `assetConfig.assetIds`; `operations <id>` shows
@@ -63,7 +63,7 @@ revision from it.
      (note the `rubric` level); the `id` column is the `metricId`,
      `defaultWeight` a good starting weight.
    - `fruxon secrets list` — secret ids/keys for the definition's
-     `allowedSecretIds`. The `id` (a Guid) is what a step allow-lists; the
+     `allowedSecretIds`. The `id` (a Guid) is what the definition allow-lists; the
      `key` is the `{{secret.KEY}}` name a tool argument expands. The
      `published` column tells you whether it's resolvable yet (a draft
      isn't). Values are never shown — metadata only. `fruxon secrets grants
@@ -78,7 +78,7 @@ revision from it.
      (default `--limit 50`) — pass `--all` when populating a roster from a
      tenant that might have more than that, or the id list silently stops
      short. `fruxon triggers list` enumerates the scheduled / event
-     sources that fire agents (these live outside the draft flow, so this
+     sources that fire agents (these live outside the draft, so this
      is the only way to see them); `fruxon integrations triggers
      <integration>` lists the event *types* an integration can fire on —
      each descriptor's `id` is the `eventType` a `triggers create` body
@@ -102,7 +102,7 @@ revision from it.
    the agent's draft to `<agent>.draft.json`. If no draft exists yet
    it is seeded from the deployed revision — so you edit a real body,
    not a blank page. Either way the file is a postable `AgentDraftPayload`
-   (a `definition`, not a step graph), so `push` takes it back unchanged.
+   (one `definition`), so `push` takes it back unchanged.
    (A brand-new agent with no revision has nothing to fork — see
    "Brand-new agent: the bootstrap" below.)
 4. **Author / edit** that JSON file — by hand or with a coding agent —
@@ -267,7 +267,7 @@ it from your app via the SDK (`FruxonClient.stream` / `execute`).
 > also carry a `setup` block that provisions its own world — upload a knowledge
 > `asset` (and `wait: queryable` for ingestion), create a `participant`, or
 > `create` + deploy an `agent` — reference them as `${asset.catalog.id}` in the
-> flow/turn, and the runner tears it all down afterwards (even on failure;
+> agent body or a turn, and the runner tears it all down afterwards (even on failure;
 > `--keep` to inspect). That's how you prove retrieval with a planted canary
 > fact end-to-end. Assertions are deterministic by default (`reply_contains` /
 > `tool_called` / `no_blocked` / `outcome`); add `reply_judge: {metric,
@@ -341,7 +341,7 @@ dataset:
 fruxon agents draft evaluate <agent> --list-datasets    # pick one
 fruxon agents draft evaluate <agent> --dataset <uuid>   # confirm + run
 ```
-**Expensive — every dataset sample runs the full flow once** (LLM
+**Expensive — every dataset sample runs the draft agent once** (LLM
 tokens + integration calls). The CLI quotes the sample count and
 asks for confirmation; in agent mode (`FRUXON_AGENT_MODE` /
 `CLAUDECODE` / Codex / `CI`) it refuses to run without an explicit `--yes`. Returns an
@@ -353,9 +353,8 @@ draft snapshot is pinned at submit time, so further edits don't
 invalidate the result.
 
 ## Body anatomy
-**An agent is not a flow.** There are no steps, no edges, and no
-ENTRY_POINT / EXIT_POINT to author — the server synthesizes the graph
-on the way to storage. The body you write is an `AgentDraftPayload`:
+**An agent is one definition** — no steps or edges to author. The body
+you write is an `AgentDraftPayload`:
 
 - **`definition`** (required) — the agent itself: `provider`,
   `systemPrompt`, `userPrompt`, `tools` (integration tools),
@@ -363,7 +362,6 @@ on the way to storage. The body you write is an `AgentDraftPayload`:
   the capability configs below.
 - **`parametersMetadata`** — the agent's declared inputs
   (`[ParameterMetadata, ...]`), **top-level**, not inside `definition`.
-  This is where the old ENTRY_POINT step's parameters moved to.
 - **`integrationSlots` / `integrationBindings`** — the credentials the
   tools resolve through (see "Wiring integrations" below).
 - **`assets`** — the indexed assets attached to the revision. An *asset* is
@@ -430,13 +428,12 @@ names; nothing validates a `pipelines` capability config locally, so a
 wrong key is only caught server-side at revision-create.
 
 ### Migrating an older body
-A body with `flow` / `steps` / `edges` is the previous contract and the
+A body with `flow` / `steps` / `edges` is an older contract and the
 server rejects it. `draft validate` says so with a single
 `legacy_flow_body` finding. To recover an existing agent's body:
 `fruxon agents revisions get <agent> <n> --as-draft`. The endpoint itself
-answers in the definition shape now, so the flag's job is trimming the
-server-stamped fields a create would reject — it still collapses the older
-flow shape if you point it at a cell serving one.
+answers with the definition, so the flag's job is trimming the
+server-stamped fields a create would reject.
 
 ## Platform blocks: don't restate them
 The model never sees `systemPrompt` alone. The platform adds blocks around
@@ -551,16 +548,16 @@ The rules. `draft validate` checks them; the ones marked *online* need
   tool, or a tenant tool whose binding sets `safeToRepeat: true`.
 - `arguments` is parameter name → template, at most 20. A template may use
   only `{{turn.message_text}}` (the customer's own words this turn),
-  `{{sender.*}}` and `{{venue.*}}`. It can't use a run parameter, a secret or
-  another step's output. Don't set a parameter the binding pins. *Online:*
+  `{{sender.*}}` and `{{venue.*}}`. It can't use a run parameter or a
+  secret. Don't set a parameter the binding pins. *Online:*
   every argument is a real parameter, and every required parameter is given
   or pinned.
 - `minLetters` is 0–10000, default 15. The call waits for a turn whose
   customer text has that many letters, so a greeting or an emoji doesn't set
   it off. `maxResultChars` is 200–50000, or omitted.
 
-When it runs: on a conversation turn only, not on an API, trigger or flow
-run, and not in a spawned subtask. Each call runs once per conversation, on
+When it runs: on a conversation turn only, not on an API, trigger or
+workflow run, and not in a spawned subtask. Each call runs once per conversation, on
 the first turn that passes `minLetters`, and is retried on the next one if it
 failed. The calls share a 3-second budget; one that fails or runs over is
 left out and the turn goes on. In the lab it runs only with **Confirm tool
@@ -682,6 +679,9 @@ Discovering the ids (the CLI can't guess them for you):
   one. `vertex_ai_gemini` and `vertex_ai_maas` share `vertex_ai`'s
   credential, so for them that is a `vertex_ai` config: their list
   includes it, and the server refuses to create a config under either.
+  The exception is `fruxon_managed_gemini` (Gemini run by Fruxon, billed
+  to the workspace's token balance): it has no credential and no config,
+  so an agent on it omits `tenantConfigId` and the server supplies one.
 
 ## Common pitfalls
 `fruxon agents draft validate` catches most of these locally before a
@@ -727,9 +727,10 @@ semantics.
 - **`draft push` reports a stale draft (HTTP 409)**: the draft
   moved on the server — an open studio, or another session. Your
   local file is untouched; `draft pull` to reconcile, then push.
-- **Missing `provider.tenantConfigId` on an AGENT step**: run fails
+- **Missing `provider.tenantConfigId` on the definition**: run fails
   with `LLMProvider <x> is not configured`. Pin a published tenant
-  LLM config id (see "Providers and models").
+  LLM config id (see "Providers and models"). Not for
+  `fruxon_managed_gemini`, which has no config.
 - **Integration tool `integrationConfigId` ≠ a slot id**: the tool
   call fails at run with an auth-not-found error. When present it must
   equal an `integrationSlots[].id` you declared. Omitting it is fine —

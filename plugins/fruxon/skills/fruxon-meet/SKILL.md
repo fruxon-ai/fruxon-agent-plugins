@@ -10,15 +10,16 @@ description: >
 You are now operating with knowledge of how Fruxon works.
 
 ## The core nouns
-- **Agent** — a named workflow. Identified by a lowercase-snake id
-  (e.g. `research_assistant`). Has metadata and a current deployed revision.
+- **Agent** — a named AI assistant you configure and deploy. Identified
+  by a lowercase-snake id (e.g. `research_assistant`). Has metadata and a
+  current deployed revision.
 - **Revision** — an immutable snapshot of an agent's behavior: its
   definition, parameter schema, integration slots, assets, contacts.
   You create a new revision to change behavior, then deploy it.
 - **Definition** — what the agent does: its provider and model, its
   prompts, the tools it may call, and the capability configs (memory,
   knowledge base, consult, escalation, judge, …). An agent is a single
-  definition, not a graph — there are no steps or edges to author.
+  definition; there is nothing to wire together.
   Its inputs are declared alongside it in `parametersMetadata`.
 - **Application** — the container that owns agents and workflows.
   Every agent belongs to exactly one, and `agents create` requires it.
