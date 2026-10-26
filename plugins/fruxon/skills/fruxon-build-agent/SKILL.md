@@ -37,7 +37,14 @@ revision from it.
      `tenantConfigId` points at. None yet (the integration isn't
      connected)? For an OAuth integration, `fruxon integrations authorize
      <integration>` mints a consent URL — a human clicks it and the
-     connection is saved as a config you can then pin.
+     connection is saved as a config you can then pin. For an API key,
+     token or password (Stripe, most REST APIs), `fruxon integrations
+     connect <integration>` creates the config and prints a link: give it
+     to the user, who signs in and types the credential on a Fruxon page,
+     which tests it and publishes the config. Never ask for the secret in
+     chat. `-o json` gives `configId` (pin it once the user says it is
+     filled) and `url`; `--param name=value` sets a required connection
+     setting such as a subdomain, `--config <id>` fills an existing config.
    - `fruxon tools list <integration>` — see tools per integration;
      `fruxon tools get <integration> --tool <tool>` for a tool's parameters
    - `fruxon llm-providers list` — see providers + models
@@ -50,7 +57,15 @@ revision from it.
      one is created under `vertex_ai`. `configs test <provider> <id>` probes a
      config's credentials; `configs publish` ships a draft — and switches
      every agent already on that config, so it asks first (`--yes` under
-     an agent driver)
+     an agent driver). None for the provider yet? `fruxon llm-providers
+     connect <provider>` creates the config and prints a link: give it to
+     the user, who signs in and types the API key on a Fruxon page, which
+     tests it with the provider and publishes the config. Never ask for the
+     key in chat. `-o json` gives `configId` and `requestId`; pin the
+     `configId` once `fruxon llm-providers link-status <provider>
+     <configId> <requestId>` says `FILLED`. `--param name=value` sets a
+     required setting (Bedrock's `region`, Vertex's `project_id` and
+     `location`); `--config <id>` fills an existing config
    - `fruxon assets create --file ./docs.pdf -o id` — create a
      file-backed knowledge-base (RAG) asset from the CLI. Then run
      `fruxon assets wait <id>` before wiring it into an agent; ingestion is
@@ -676,7 +691,8 @@ Discovering the ids (the CLI can't guess them for you):
   the run fails with `LLMProvider <x> is not configured` — even when the
   provider *is* configured. Discover ids with
   `fruxon llm-providers configs list <provider>` and pick a published
-  one. `vertex_ai_gemini` and `vertex_ai_maas` share `vertex_ai`'s
+  one; with none, `fruxon llm-providers connect <provider>` gets the
+  user to fill one in through a link. `vertex_ai_gemini` and `vertex_ai_maas` share `vertex_ai`'s
   credential, so for them that is a `vertex_ai` config: their list
   includes it, and the server refuses to create a config under either.
   The exception is `fruxon_managed_gemini` (Gemini run by Fruxon, billed

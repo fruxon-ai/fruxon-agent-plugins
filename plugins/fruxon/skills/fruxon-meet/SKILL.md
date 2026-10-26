@@ -64,6 +64,7 @@ fruxon agents sandbox fork <agent> <message-id> --send --draft  # replay a real 
 fruxon agents sandbox test <file|dir>  # run scenario e2e tests of an agent (exit 0 pass / 1 fail; --junit)
 fruxon integrations list / create
 fruxon integrations authorize <integration>  # mint an OAuth connect link for a human to click (auto-detects the method)
+fruxon integrations connect <integration>  # create a config + mint a link a human fills an API key / token / password in
 fruxon integrations triggers <integration>  # event types (+ payload paths) an integration can fire an agent on
 fruxon integrations configs list / get / update / publish <integration>  # saved credentials; update edits the draft, publish makes it live
 fruxon tools list <integration> / create
@@ -88,6 +89,7 @@ fruxon agents improvements test / compare / results <agent> <card>  # try a card
 fruxon agents improvements approve / dismiss <agent> <card> --yes  # approve deploys the change as a new revision (only on the human's say-so)
 fruxon llm-providers list / models <provider>  # LLM providers + exact model ids (don't guess them)
 fruxon llm-providers configs list / get / test / publish <provider>  # saved LLM credentials; publish switches every agent on it (--yes-gated)
+fruxon llm-providers connect <provider> / link-status  # a link the human types the API key into; never ask for it in chat
 fruxon metrics list                    # evaluation-metric ids for an LLM judge (judge.rubric.metrics)
 fruxon triggers list / create / bind / fire  # autonomy: fire agents on schedule/event (write surface)
 fruxon triggers preview-shape / test-source <t>  # dry-run a work shape: what each stage sends, what the door lists (--count for how much, startFrom for the first after:, FILTERED for what door.skipWhen drops, and each record as door.projection will store it)

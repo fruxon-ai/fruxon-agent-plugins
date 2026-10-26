@@ -19,8 +19,9 @@ Every integration has two layers:
   methods it supports, WHAT parameters the user fills in, WHAT
   tools it exposes. Authored via the CLI in this flow.
 - **Instance (config)** — the actual secret values. API keys,
-  OAuth grants, tenant ids. Entered by the user through the
-  dashboard. NEVER author or paste secrets through the CLI.
+  OAuth grants, tenant ids. Entered by the user on a Fruxon page:
+  the dashboard, or the page a credential link opens. NEVER author
+  or paste secrets through the CLI.
 
 Your job is the shape. The user does the instance. Make the
 handoff smooth.
@@ -189,27 +190,37 @@ handoff smooth.
    ```
 
 7. **Hand off to the user. This is the UX-critical step.**
+   Get the user a link that connects it:
+   - **API key, bearer token or username + password** shared by the
+     workspace (an APPLICATION-level method):
+     `fruxon integrations connect <integration-id> -o json` creates the
+     config and returns its `configId` and a `url`. The page it opens
+     takes the secret, tests it and publishes the config. Required
+     connection settings go in as `--param name=value`.
+   - **OAuth**: `fruxon integrations authorize <integration-id>`.
+   - **Per-user credentials** (each person connects their own): nothing
+     to fill now; each user is asked on first use.
+
    Compose a SHORT, FRIENDLY message that includes:
    - One line: what you built (integration + tool count).
-   - One line: the dashboard link.
-   - One line per auth method: what the user needs to paste.
-   - The optional shortcut: `fruxon integrations open <id>`.
+   - The link, and one line on what the user will be asked to paste.
+   - The fallback: the dashboard (`fruxon integrations open <id>`).
 
    Example:
    ```
    ✓ Created the `github` integration with 4 tools.
 
    Now connect your account — agents can't call the tools until
-   this is done:
-      → https://app.fruxon.io/integrations/github
-        ↳ Paste a GitHub Personal Access Token (Bearer auth)
+   this is done. Open this link, sign in to Fruxon and paste a
+   GitHub Personal Access Token:
+      → https://app.fruxon.com/credential-entry#t=…
 
-   Or run: fruxon integrations open github
+   Or connect it in the dashboard: fruxon integrations open github
    ```
 
    DO NOT ask the user for the secret in chat. DO NOT offer to
-   put it in the JSON file. The dashboard is the only place
-   secrets are accepted, by design.
+   put it in the JSON file. A Fruxon page (the link's, or the
+   dashboard) is the only place secrets are accepted, by design.
 
 ## After the user connects
 
