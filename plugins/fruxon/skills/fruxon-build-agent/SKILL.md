@@ -474,6 +474,12 @@ and drifts when the platform's wording changes.
 - **Never copy block text out of a trace.** Most of a trace's
   `systemInstructions` is platform blocks (`executions trace --show-system`
   labels them); pasted into the prompt, every one is sent twice.
+- **To see whether the model follows an instruction**, a block's or the
+  prompt's, ask it directly with no agent around it: `fruxon llm-providers
+  configs complete <provider> <config> --model <model> --system @prompt.md
+  -m '<a user turn>'` runs one completion on the config the agent pins and
+  records nothing. The model samples, so run a case several times before
+  judging it.
 - **Before `push`, run `fruxon agents system-blocks <agent> --check`.** It
   exits 12 when the reference lint flags a tag the prompt names (renamed, or
   a block this agent never gets) or when the draft's plan can't be built.

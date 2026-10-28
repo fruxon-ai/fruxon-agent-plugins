@@ -119,6 +119,13 @@ URL is the execution record id (under `group=session`, the root run's
 record id) — paste it straight into `executions get`. If it 404s, fall
 back to `executions list` narrowed to that timestamp.
 
+**When the report is about a voice (Talk) call**, start from the call:
+`fruxon agents voice-calls list <agent>` finds it, and
+`fruxon agents voice-calls get <agent> <call-id>` prints it turn by turn
+with each reply's `executionRecordId`, which `executions trace` takes.
+Read the turn's `delivery` before the trace: the trace holds the whole
+reply, but on an `INTERRUPTED` turn the caller heard only `spokenText`.
+
 **Listing does not mark sub-tasks.** A fan-out puts the orchestrator and
 every spawned child in the same list, and the row shape doesn't say
 which is which. `executions tree <agent> <any-id-in-the-tree>` answers

@@ -55,6 +55,7 @@ fruxon agents topics messages <agent> <topic>  # the actual transcript of one co
 fruxon agents topics origin <agent> <topic>    # why it was opened — the main-conversation turn behind it
 fruxon agents topics sessions <agent> <topic>  # its episodes — why each one ended
 fruxon agents inbox <agent>            # what the agent is paying attention to (focal/home topics)
+fruxon agents voice-calls list|get <agent> [<call-id>]  # Talk calls: what was said, replied, and heard
 fruxon agents approvals list <agent>   # pending human-in-the-loop approvals a run is blocked on
 fruxon agents approvals respond <agent> <id> --approve|--reject  # answer the gate (needs --yes in agent mode)
 fruxon agents memory list <agent> --subject <s>  # what the agent remembers (filter by subject/search/scope)
@@ -89,6 +90,7 @@ fruxon agents improvements test / compare / results <agent> <card>  # try a card
 fruxon agents improvements approve / dismiss <agent> <card> --yes  # approve deploys the change as a new revision (only on the human's say-so)
 fruxon llm-providers list / models <provider>  # LLM providers + exact model ids (don't guess them)
 fruxon llm-providers configs list / get / test / publish <provider>  # saved LLM credentials; publish switches every agent on it (--yes-gated)
+fruxon llm-providers configs complete <provider> <config> --model M -m TEXT  # one completion on a config, no agent: does the model follow this prompt?
 fruxon llm-providers connect <provider> / link-status  # a link the human types the API key into; never ask for it in chat
 fruxon metrics list                    # evaluation-metric ids for an LLM judge (judge.rubric.metrics)
 fruxon triggers list / create / bind / fire  # autonomy: fire agents on schedule/event (write surface)
