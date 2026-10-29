@@ -535,11 +535,16 @@ A step's output is rarely the mystery. The mystery is the state it read.
   undeployed revision), and `stopped.code` names where a real pass
   would stop — test there, then re-drive.
 - **A WAITING item is not stuck — it is parked, and the question may have
-  reached nobody.** `WAITING` means the item is on an ASK stage's batch, and
-  `ledger items` carries the `batchId` that joins it to one. The pairing is
-  total for that status (an item is WAITING only while its batch is open), so
-  one `fruxon triggers ledger batches <trigger-id> --open-only` resolves every
-  waiting row. Read `delivery` there before anything else: `UNDELIVERABLE` and
+  reached nobody.** `waitingFor` on the row says what it is parked on.
+  `TIME` is a WAIT stage's due time: `wakeAt` says when, the sweeper ends it
+  within a minute or two of that, and only one 15 minutes past due is a
+  fault (the sweeper is behind — `ledger funnel` counts them as `overdue`;
+  `ledger wake <trigger-id> <item-id>` ends one by hand). `PERSON` means the
+  item is on an ASK stage's batch, and `ledger items` carries the `batchId`
+  that joins it to one. The pairing is total for those (an item waits on a
+  question only while its batch is open), so one
+  `fruxon triggers ledger batches <trigger-id> --open-only` resolves every
+  such row. Read `delivery` there before anything else: `UNDELIVERABLE` and
   `FAILED` mean **nobody was asked and nobody will answer**, so the items sit
   until the batch expires while the batch, the count and the stage all look
   healthy — this is the failure that looks like nothing at all. `QUEUE_ONLY`
