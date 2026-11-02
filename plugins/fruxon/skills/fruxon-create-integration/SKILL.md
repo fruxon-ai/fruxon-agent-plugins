@@ -197,13 +197,17 @@ handoff smooth.
      config and returns its `configId` and a `url`. The page it opens
      takes the secret, tests it and publishes the config. Required
      connection settings go in as `--param name=value`.
-   - **OAuth**: `fruxon integrations authorize <integration-id>`.
+   - **OAuth** shared by the workspace: the same command,
+     `fruxon integrations connect <integration-id> -o json` (`--scope`
+     for what to ask). Whoever opens the link signs in to the provider,
+     and the account is connected and the config published.
    - **Per-user credentials** (each person connects their own): nothing
      to fill now; each user is asked on first use.
 
    Compose a SHORT, FRIENDLY message that includes:
    - One line: what you built (integration + tool count).
-   - The link, and one line on what the user will be asked to paste.
+   - The link, and one line on what the user will be asked to paste
+     (or, for OAuth, which account to sign in with).
    - The fallback: the dashboard (`fruxon integrations open <id>`).
 
    Example:

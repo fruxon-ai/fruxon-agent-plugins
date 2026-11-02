@@ -64,8 +64,8 @@ fruxon agents sandbox open/turn/fire/stream/answer/close  # drive a network sand
 fruxon agents sandbox fork <agent> <message-id> --send --draft  # replay a real bad reply against your draft, same history
 fruxon agents sandbox test <file|dir>  # run scenario e2e tests of an agent (exit 0 pass / 1 fail; --junit)
 fruxon integrations list / create
-fruxon integrations authorize <integration>  # mint an OAuth connect link for a human to click (auto-detects the method)
-fruxon integrations connect <integration>  # create a config + mint a link a human fills an API key / token / password in
+fruxon integrations connect <integration>  # create a config + mint a link a human types an API key / token / password in, or signs in to (OAuth)
+fruxon integrations authorize <integration>  # the same, for an integration's OAuth method only
 fruxon integrations triggers <integration>  # event types (+ payload paths) an integration can fire an agent on
 fruxon integrations configs list / get / update / publish <integration>  # saved credentials; update edits the draft, publish makes it live
 fruxon tools list <integration> / create

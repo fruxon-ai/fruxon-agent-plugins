@@ -35,14 +35,15 @@ revision from it.
    - `fruxon integrations configs list <integration>` — the tenant
      config ids for an integration; a published one is what a slot's
      `tenantConfigId` points at. None yet (the integration isn't
-     connected)? For an OAuth integration, `fruxon integrations authorize
-     <integration>` mints a consent URL — a human clicks it and the
-     connection is saved as a config you can then pin. For an API key,
-     token or password (Stripe, most REST APIs), `fruxon integrations
-     connect <integration>` creates the config and prints a link: give it
-     to the user, who signs in and types the credential on a Fruxon page,
-     which tests it and publishes the config. Never ask for the secret in
-     chat. `-o json` gives `configId` (pin it once the user says it is
+     connected)? `fruxon integrations connect <integration>` creates the
+     config and prints a link: give it to the user, who signs in to Fruxon
+     and either types the API key, token or password (Stripe, most REST
+     APIs) on a Fruxon page, which tests it and publishes the config, or,
+     for an OAuth integration (Gmail, Google Sheets…), signs in to the
+     provider, and the account is connected and the config published
+     (`--scope` for what to ask; `authorize` is the same for OAuth).
+     Nothing is connected until they use the link. Never ask for the
+     secret in chat. `-o json` gives `configId` (pin it once the user says it is
      filled) and `url`; `--param name=value` sets a required connection
      setting such as a subdomain, `--config <id>` fills an existing config.
    - `fruxon tools list <integration>` — see tools per integration;
