@@ -11,7 +11,7 @@
     {
       "name": "fruxon",
       "source": "./plugins/fruxon",
-      "description": "Build, run, and debug Fruxon agents from Claude Code through the fruxon CLI",
+      "description": "Build, test, deploy and debug AI agents on Fruxon: draft agents, connect tools, run evaluations, publish revisions and read execution traces",
       "category": "development"
     }
   ]

@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "fruxon",
   "version": "2.2.3",
-  "description": "Build, run, and debug Fruxon agents through the fruxon CLI",
+  "description": "Build, test, deploy and improve AI agents on Fruxon from Claude: draft an agent in plain language, connect tools like Slack, GitHub and Jira, run evaluations and sandbox tests, publish revisions, trigger agents on schedules or events, manage knowledge bases, and debug any run from its execution trace. Requires a Fruxon account and the fruxon CLI.",
   "author": {
     "name": "Fruxon",
     "url": "https://fruxon.com"
@@ -12,7 +12,20 @@
   "license": "MIT",
   "keywords": [
     "fruxon",
-    "agents",
+    "ai-agents",
+    "agent-builder",
+    "agentops",
+    "llm-agents",
+    "agent-deployment",
+    "agent-evaluation",
+    "agent-testing",
+    "agent-observability",
+    "tracing",
+    "debugging",
+    "integrations",
+    "knowledge-base",
+    "rag",
+    "automation",
     "cli"
   ],
   "extensions": {
@@ -20,7 +33,7 @@
       "hooks": "./hooks/codex-hooks.json",
       "interface": {
         "displayName": "Fruxon",
-        "shortDescription": "Build, run, and debug Fruxon agents",
+        "shortDescription": "Build, test, deploy and debug AI agents",
         "developerName": "Fruxon",
         "category": "Coding",
         "websiteURL": "https://fruxon.com"
