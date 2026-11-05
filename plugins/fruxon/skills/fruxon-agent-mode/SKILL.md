@@ -80,7 +80,7 @@ the bypass flag.
 
 | Path | Bypass |
 |---|---|
-| `fruxon login` (no key) | Pass `--token $FRUXON_TOKEN` |
+| `fruxon login` (no key) | Don't sign in on the human's behalf. If `FRUXON_TOKEN` is set, every command already uses it — skip login. Otherwise ask the human to run `fruxon login` in their own terminal. Never put a key on a command line. |
 | `fruxon agents draft run --edit` | Pass the value via `-p key=value` or `--params file.json` |
 | `agents draft run --file <other>` replacing an existing server draft (a file other than the pulled one, or `-`) | `--restore` to run it as a one-off and put the current draft back afterwards (what you want for a control/A-B variant), or `--yes` to keep it in the draft. The server draft is what `revisions create` publishes. |
 | `keys delete` (no --yes) | Pass `--yes` |
