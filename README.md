@@ -72,6 +72,7 @@ One plugin serves both tools; each reads its own manifest and ignores the other'
 | `plugins/fruxon/.claude-plugin/plugin.json`, `hooks/hooks.json` | Claude Code plugin |
 | `plugins/fruxon/plugin.json`, `hooks/codex-hooks.json` | Codex plugin |
 | `plugins/fruxon/skills/` | Both |
+| `plugins/fruxon/README.md`, `LICENSE` | Claude plugin directory listing |
 
 ## License
 
