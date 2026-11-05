@@ -65,7 +65,8 @@ session-start hook. It stores nothing and makes no network calls of its own.
 
 ## Support
 
-Report problems at
+Contact the Fruxon team at [fruxon.com/contact](https://fruxon.com/contact).
+Bugs in the plugin itself can also go to
 [github.com/fruxon-ai/fruxon-agent-plugins/issues](https://github.com/fruxon-ai/fruxon-agent-plugins/issues).
 
 ## License
