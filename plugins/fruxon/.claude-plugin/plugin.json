@@ -8,6 +8,7 @@
   },
   "homepage": "https://fruxon.com",
   "supportUrl": "https://fruxon.com/contact",
+  "documentationUrl": "https://docs.fruxon.com/guides/coding-agents/",
   "privacyPolicyUrl": "https://fruxon.com/privacy-policy",
   "repository": "https://github.com/fruxon-ai/fruxon-agent-plugins",
   "license": "MIT",
