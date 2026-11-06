@@ -43,12 +43,9 @@ name.
 
 ## What the plugin runs and sends
 
-The plugin itself contains only instructions (the skills) and one
-session-start hook. It stores nothing and makes no network calls of its own.
+The plugin itself contains only instructions (the skills). It runs no
+hooks in Claude, stores nothing and makes no network calls of its own.
 
-- **Session-start hook** (`hooks/check-cli.sh`): runs `fruxon --version`
-  locally and compares it with the plugin's version. It prints a short note
-  to Claude only when the CLI is missing or out of date.
 - **The `fruxon` CLI**, which Claude runs when you ask it to, talks to the
   Fruxon API (`https://api.fruxon.com` by default) as the workspace you
   signed in to with `fruxon login`. It sends what the command you asked for

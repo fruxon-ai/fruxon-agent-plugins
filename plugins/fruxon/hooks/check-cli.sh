@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # SessionStart hook: tell the agent when the fruxon CLI is missing or older
 # than the release these skills were synced from. Silent when all is well,
-# so it costs no context in the common case. Shared by Claude Code
-# (hooks.json, CLAUDE_PLUGIN_ROOT) and Codex (codex-hooks.json, PLUGIN_ROOT).
+# so it costs no context in the common case. Codex only (codex-hooks.json):
+# the Claude plugin directory refuses command hooks from organizations it
+# hasn't Verified, so the Claude side ships without hooks/hooks.json.
+# Bring that file back once Fruxon's org is Verified.
 #
 # The messages name no install commands on purpose: the Claude plugin
 # directory's validator reads them as unpinned package launchers and blocks
