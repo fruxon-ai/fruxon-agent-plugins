@@ -44,7 +44,7 @@ name.
 ## What the plugin runs and sends
 
 The plugin itself contains only instructions (the skills). It runs no
-hooks in Claude, stores nothing and makes no network calls of its own.
+hooks, stores nothing and makes no network calls of its own.
 
 - **The `fruxon` CLI**, which Claude runs when you ask it to, talks to the
   Fruxon API (`https://api.fruxon.com` by default) as the workspace you
