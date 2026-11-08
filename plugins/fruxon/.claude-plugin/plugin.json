@@ -7,6 +7,7 @@
     "url": "https://fruxon.com"
   },
   "homepage": "https://fruxon.com",
+  "icon": "./.claude-plugin/icon.png",
   "supportUrl": "https://fruxon.com/contact",
   "documentationUrl": "https://docs.fruxon.com/guides/coding-agents/",
   "privacyPolicyUrl": "https://fruxon.com/privacy-policy",
