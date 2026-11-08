@@ -70,7 +70,7 @@ One plugin serves both tools; each reads its own manifest and ignores the other'
 | `.claude-plugin/marketplace.json` | Claude Code marketplace |
 | `.agents/plugins/marketplace.json` | Codex marketplace |
 | `plugins/fruxon/.claude-plugin/plugin.json` | Claude Code plugin |
-| `plugins/fruxon/plugin.json`, `hooks/codex-hooks.json`, `hooks/check-cli.sh` | Codex plugin |
+| `plugins/fruxon/plugin.json` | Codex plugin |
 | `plugins/fruxon/skills/` | Both |
 | `plugins/fruxon/README.md`, `LICENSE` | Claude plugin directory listing |
 
