@@ -81,8 +81,127 @@ handoff smooth.
      - **Bearer token**: one param, secret, displayName "Access Token".
      - **OAuth (user)**: typically zero params here — the dashboard
        runs the consent flow.
+     - **Sign-in token exchange**: the API has no key or static
+       token — you POST a login and send back what it returns.
+       The params here are the login the user types; the
+       exchange is declared in `authSettings`. See **Token
+       exchange auth** below.
+     Add `"testPath"` to a method to make its credentials
+     verifiable: a relative, side-effect-free GET under the
+     `baseUrl` connection parameter (`"/me"`) that the server
+     calls with the credentials the user supplied. Relative is
+     enforced, so the probe can never leave the `baseUrl` host.
+     Without one the credentials store unverified and
+     `integrations verify` refuses the method — declare it
+     wherever the API has a cheap identity endpoint. Valid for
+     `API_KEY`, `BEARER_TOKEN`, `BASIC_AUTH`, and a `CUSTOM`
+     method naming an `authProviderName` (the probe then runs
+     that provider's own exchange, so a pass means a real tool
+     call authenticates the same way).
    - `configMetadata.parametersMetadata[]` — NON-secret connection
-     params (workspace id, region, base URL). Optional.
+     params (workspace id, region, base URL). Optional. A method
+     with a `testPath` needs `baseUrl` here — that is what the
+     probe path hangs off.
+
+   ## Token exchange auth
+
+   For an API whose auth is "POST a login, read a token out of
+   the response, then send that token as a header" — no API key,
+   no OAuth. Declare it; there is nothing to add to the backend.
+
+   On the auth method set:
+   - `"type": "CUSTOM"`
+   - `"authProviderName": "token_exchange"` — the only provider
+     name a custom integration may use.
+   - `"userCredentialAuthType"` — the shape the user actually
+     types and the platform stores: `BASIC_AUTH` (username +
+     password), `API_KEY`, or `BEARER_TOKEN`. Required. The
+     credential-entry page renders this, so you do NOT write
+     `parametersMetadata` for it.
+   - `"authSettings": { "parameters": { ... } }` — the exchange.
+
+   The `authSettings.parameters` keys:
+   - `login_path` — **relative** path under the `baseUrl`
+     connection parameter, e.g. `"/jwtlogin"`. Relative is
+     enforced on save and again on every exchange: an absolute
+     URL is rejected, so a login can never be POSTed to a host
+     other than the one the tools already call. `baseUrl` must
+     be declared in `parametersMetadata`.
+   - `login_method` — `POST` (default), `PUT` or `PATCH`.
+   - `body_format` — `form` (default, form-urlencoded) or
+     `json`.
+   - `body.<field>` — one body field per key, each value a
+     `{{placeholder}}` template. In `json` mode a dotted field
+     name nests (`body.user.email`).
+   - `login_header.<name>` — an extra header on the login
+     request only, same templating.
+   - `token_path` — dotted path to the token in the response,
+     e.g. `"data.auth_token"`.
+   - `header_name` (default `Authorization`), `header_scheme`
+     (default `Bearer`; `"none"` sends the token as the whole
+     header value) and `header_value_prefix` — how the token
+     rides on every subsequent call.
+   - A token lifetime, at least one of: `jwt_expiry: "true"`
+     (read the `exp` claim out of the JWT), `lifetime_path`
+     (a seconds-to-live field in the response, OAuth's
+     `expires_in`), or `lifetime_seconds` (fixed). Plus
+     `expiry_margin_seconds` (default 60) to re-sign-in that
+     early. One is required — without it the login would run on
+     every single tool call.
+   - `rejected_status_codes` — statuses that mean the credential
+     was refused rather than the endpoint failing. Default
+     `401`.
+   - `failure_path` / `failure_value` / `failure_message` — a
+     field in a 200 response that means the login cannot
+     succeed (a `otp_required: true` for an account with
+     two-factor sign-in). `failure_message` is what the operator
+     is shown, and is required when `failure_path` is set.
+
+   Templates resolve the integration's connection parameters by
+   their flat names, plus the stored credential under a
+   `credential.` prefix: `{{credential.username}}`,
+   `{{credential.password}}`, `{{credential.api_key}}`,
+   `{{credential.token}}` — whichever the declared
+   `userCredentialAuthType` offers. A template naming anything
+   else is rejected on save. Never put a credential value in
+   `authSettings` itself; it holds templates only.
+
+   A full example — a management console that signs in with
+   email and password and returns a long-lived JWT:
+   ```json
+   {
+     "id": "console_login",
+     "displayName": "Console login",
+     "description": "Sign in with your console email and password.",
+     "type": "CUSTOM",
+     "authProviderName": "token_exchange",
+     "userCredentialAuthType": "BASIC_AUTH",
+     "testPath": "/branches",
+     "authSettings": {
+       "parameters": {
+         "login_path": "/jwtlogin",
+         "body_format": "form",
+         "body.email": "{{credential.username}}",
+         "body.password": "{{credential.password}}",
+         "body.remember_me": "1",
+         "token_path": "data.auth_token",
+         "header_scheme": "Bearer",
+         "jwt_expiry": "true",
+         "expiry_margin_seconds": "3600",
+         "failure_path": "data.otp_required",
+         "failure_message": "This account uses a one-time code, which an unattended integration cannot complete."
+       }
+     }
+   }
+   ```
+
+   The token is cached per credential until its margin, so the
+   login runs once, not per call. `testPath` works here like
+   anywhere else, and the probe runs this exchange — a pass
+   means a real tool call signs in the same way.
+
+   Your tools then declare NO `Authorization` header, exactly as
+   for `BEARER_TOKEN` — see **Placeholders** below.
 
 4. **Create the integration.**
    ```
@@ -231,7 +350,7 @@ handoff smooth.
 Once the user reports the config is set up, verify:
 ```
 fruxon integrations configs list <integration-id>
-fruxon integrations verify <integration-id>      # tests the auth
+fruxon integrations verify <integration-id>      # tests the auth (needs a testPath)
 fruxon tools run <integration-id> --tool <tool-id> -c <config-uuid>   # end-to-end
 ```
 
