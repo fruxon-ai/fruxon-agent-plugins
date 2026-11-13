@@ -21,14 +21,14 @@ agents through the `fruxon` CLI.
    /plugin install fruxon@fruxon
    ```
 
-   **Codex**, from a terminal:
+   **Codex**: install **Fruxon** from the Plugins Directory, or add this
+   repository as a marketplace from a terminal:
 
    ```bash
    codex plugin marketplace add fruxon-ai/fruxon-agent-plugins
-   codex plugin add fruxon@fruxon
    ```
 
-   or run `/plugins` inside Codex and pick **Fruxon**.
+   then run `/plugins` inside Codex and pick **Fruxon**.
 
 ## What's inside
 
@@ -42,10 +42,10 @@ agents through the `fruxon` CLI.
 | `fruxon-meet` | Get oriented on Fruxon's concepts and commands |
 
 The agent loads a skill when your request matches it; you can also ask for
-one by name. A session-start check tells it when the CLI is missing or older
-than the skills. Under either tool the CLI switches itself to agent mode
-(JSON output, NDJSON streams, typed exit codes) with no setup; for Codex
-that needs fruxon 0.14.1 or later.
+one by name. The plugin runs no hooks and does not install or check the CLI;
+keep `fruxon` current so it matches the skills. Under either tool the CLI
+switches itself to agent mode (JSON output, NDJSON streams, typed exit
+codes) with no setup; for Codex that needs fruxon 0.14.1 or later.
 
 ## How it stays current
 
@@ -72,7 +72,9 @@ One plugin serves both tools; each reads its own manifest and ignores the other'
 | `plugins/fruxon/.claude-plugin/plugin.json` | Claude Code plugin |
 | `plugins/fruxon/plugin.json` | Codex plugin |
 | `plugins/fruxon/skills/` | Both |
-| `plugins/fruxon/README.md`, `LICENSE` | Claude plugin directory listing |
+| `plugins/fruxon/.claude-plugin/icon.png` | Claude Code plugin directory listing |
+| `plugins/fruxon/assets/icon.png` | Codex listing (`logo` and `composerIcon` in `plugin.json`) |
+| `plugins/fruxon/README.md`, `LICENSE` | Both directory listings |
 
 ## License
 
