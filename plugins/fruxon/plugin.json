@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "fruxon",
   "version": "2.2.5",
-  "description": "Build, test, deploy and improve AI agents on Fruxon from Claude: draft an agent in plain language, connect tools like Slack, GitHub and Jira, run evaluations and sandbox tests, publish revisions, trigger agents on schedules or events, manage knowledge bases, and debug any run from its execution trace. Requires a Fruxon account and the fruxon CLI.",
+  "description": "Build, test, deploy and improve AI agents on Fruxon: draft an agent in plain language, connect tools like Slack, GitHub and Jira, run evaluations and sandbox tests, publish revisions, trigger agents on schedules or events, manage knowledge bases, and debug any run from its execution trace. Requires a Fruxon account and the fruxon CLI.",
   "author": {
     "name": "Fruxon",
     "url": "https://fruxon.com"
@@ -32,10 +32,29 @@
     "com.openai": {
       "interface": {
         "displayName": "Fruxon",
-        "shortDescription": "Build, test, deploy and debug AI agents",
+        "shortDescription": "Build, test, debug AI agents",
+        "longDescription": "Fruxon is a platform for designing, testing, deploying and monitoring AI agents. This plugin teaches the model to drive the fruxon command-line tool, so you can describe an agent in plain language and have it drafted, tested against real inputs, published as a revision and deployed, then diagnosed from its execution trace when a run goes wrong.\n\nWhat it does:\n- Build: draft an agent definition, validate it against the schema, run sandbox tests and evaluations, and publish a revision.\n- Connect: wire integration tools such as Slack, GitHub, Jira and Google Drive into an agent, or bootstrap a new integration with API or Python code tools.\n- Run: trigger agents on schedules or events and manage their knowledge bases.\n- Debug: find a run, read its step tree, drill into a tool call's parameters and result, and reconstruct the state the agent decided from, including runs that completed but did the wrong thing.\n\nWho it is for: developers and teams who build and operate agents on Fruxon and want to do that work from their coding assistant.\n\nLimitations: the plugin contains only skills (instructions). It does not install the fruxon CLI; you need a Fruxon account and the CLI installed and signed in with `fruxon login`. The CLI, not the plugin, talks to the Fruxon API as the workspace you signed in to. Integration secrets are entered on app.fruxon.com, never through the assistant.",
         "developerName": "Fruxon",
         "category": "Coding",
-        "websiteURL": "https://fruxon.com"
+        "capabilities": [
+          "Draft, validate and publish agent revisions",
+          "Run sandbox tests and evaluations",
+          "Connect integration tools such as Slack, GitHub and Jira",
+          "Create new integrations with API or Python tools",
+          "Trigger agents on schedules or events",
+          "Debug a run from its execution trace"
+        ],
+        "websiteURL": "https://fruxon.com",
+        "supportURL": "https://fruxon.com/contact",
+        "privacyPolicyURL": "https://fruxon.com/privacy-policy",
+        "termsOfServiceURL": "https://fruxon.com/terms",
+        "defaultPrompt": [
+          "Build a Fruxon agent that triages new GitHub issues and posts a summary to Slack",
+          "My last Fruxon run completed but gave the wrong answer. Find it and work out why from the trace",
+          "Which integrations are connected in my Fruxon workspace, and how do I add the Jira tool to my agent?"
+        ],
+        "logo": "./assets/icon.png",
+        "composerIcon": "./assets/icon.png"
       }
     }
   }
