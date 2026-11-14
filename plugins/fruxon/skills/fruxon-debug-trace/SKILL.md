@@ -154,7 +154,7 @@ asking about a consult returns the tree that consult sits in.
 ## 3. Read the step tree
 
 Text output renders the whole tree, one line per step. Under agent mode
-(Claude Code, CI) the default is JSON: pass `-o text` for the tree, or
+(Claude Code, Codex, CI) the default is JSON: pass `-o text` for the tree, or
 `--show-io` / `--show-thinking`, which pick the text tree on their own.
 
 ```
