@@ -49,7 +49,11 @@ revision from it.
    - `fruxon tools list <integration>` — see tools per integration;
      `fruxon tools get <integration> --tool <tool>` for a tool's parameters
    - `fruxon llm-providers list` — see providers + models
-     (don't guess model names; they change)
+     (don't guess model names; they change). A provider marked
+     **hosted — no config needed** (surface `FRUXON_HOSTED`, e.g.
+     `fruxon_managed_gemini`) runs on Fruxon's credential, billed to the
+     workspace's token balance: omit `provider.tenantConfigId` and skip
+     the next step.
    - `fruxon llm-providers configs list <provider>` — the tenant LLM
      config ids; pin a published one on the definition via
      `provider.tenantConfigId`. `vertex_ai_gemini` and `vertex_ai_maas`
@@ -291,10 +295,14 @@ it from your app via the SDK (`FruxonClient.stream` / `execute`).
 > tenant eval metric (by id / key / name). See `fruxon examples sandbox`.
 >
 > **Fixing a reply a real customer got?** Don't retype the conversation:
-> `fruxon agents sandbox fork <agent> <message-id> --send --draft` copies the
-> history the agent had at that turn into a sandbox session and re-sends the
-> customer's message against your pushed draft — no publish needed. Writes are
-> held for approval, because sandbox does not block integration writes.
+> `fruxon agents sandbox fork <agent> <message-id> --send --draft --wait` copies
+> the history the agent had at that turn into a sandbox session, re-sends the
+> customer's message against your pushed draft — no publish needed — and
+> follows the turn until it ends. Writes are held for approval, because sandbox
+> does not block integration writes. Prefer this to `agents draft run` for a
+> conversational agent: a draft run is not a conversation, so the agent is not
+> offered conversation tools such as `chat.stay_silent`, and a reply it gives
+> there can be silence in the real chat.
 
 `agents validate` runs the same checks the server applies (missing
 required, unknown parameter, wrong type, invalid option value)
@@ -411,6 +419,34 @@ for their fields — this is the map of what exists:
 | `allowedSecretIds` | Which tenant secrets `{{secret.NAME}}` may expand |
 | `skills` | Instruction packs the agent loads on demand via `activate_skill` (`[{skillId}]`; author with `fruxon skills create`) |
 | `prefetch` | Up to 3 read-only tool calls made before the first model call of a conversation turn (see "Prefetch" below) |
+
+### Escalation reaches a desk, not the agent
+`escalation.enabled` lets the agent hand a conversation to a person — and
+tell the customer it did. Who that person is lives outside the body: the
+agent's Application has an **escalation desk** per channel (operator ladder
++ working-hours schedule). A desk with no operators reaches nobody while the
+agent still says it handed off. Before relying on it:
+
+```bash
+fruxon escalations policy <agent>                      # empty ladder = nobody
+fruxon participants list                               # operator participant ids
+fruxon escalations set-policy <agent> --operator <id>  # staff the desk (Application-wide)
+# no desk at all? make one and attach it ('other' = no-channel chats, or an entry point id):
+fruxon escalations desks create --agent <agent> --name "Front desk" --operator <id> --attach other
+fruxon agents check <agent>                            # "Escalation" row; draft validate --online warns too
+```
+
+**Hours live in two places, for two things.** The agent's own opening
+hours — what it tells customers ("we're open Sun–Thu 8–20") — belong in its
+prompt or a knowledge-base article. A **working-hours schedule** governs only
+the human hand-off: whether an escalation reaches an operator now or is
+handled as after-hours. Create one and attach it to the desk:
+
+```bash
+fruxon working-hours create --name Clinic --tz Asia/Jerusalem \
+    --hours "sun-thu 08:00-20:00" --hours "fri 08:00-13:00"
+fruxon escalations set-policy <agent> --working-hours <schedule-id>
+```
 
 ### Skills: what to move out of the prompt
 A skill is loaded only when the model decides its description applies, so
@@ -647,6 +683,39 @@ Binding accepts a name declared on the current revision **or on any
 draft**, so you can declare and bind in one session — the binding stays
 inert until a revision declaring that name deploys.
 
+## Simulate first: integrations with no credentials yet
+You can build and exercise an agent's integration flow before anyone has
+connected the real service. A config with `sandboxMode: SIMULATED` answers
+every tool call a **sandbox** run makes from a simulated store; production
+runs never read it.
+
+```bash
+# 1. A simulated config, published, no credentials (one step):
+fruxon integrations configs create google_calendar --simulated -o json   # → id
+# 2. Seed the store it answers from (or `sandbox import --file entities.json`):
+fruxon integrations configs sandbox generate google_calendar <config> \
+    --type event --count 15 --prompt "Clinic appointments next week, 20-minute slots, some gaps" \
+    --context ./kb/services-and-hours.md   # facts the data must agree with (the agent's KB text)
+fruxon integrations configs sandbox entities google_calendar <config> --type event
+# 3. Pin it on the agent's slot (tenantConfigId = <config>), push the draft, then:
+S=$(fruxon agents sandbox open <agent> -o id)
+fruxon agents sandbox turn "$S" --as <participant> --text "Can I book Tuesday morning?"
+```
+
+Writes the agent makes land in the store too, so the next turn sees them.
+`sandbox snapshot --name …` saves a state and `sandbox restore` returns to
+it; `sandbox reset --yes` empties it. In a scenario file (`agents sandbox
+test`), a `seed` setup step does step 2 for you:
+
+```yaml
+setup:
+  - seed: {ref: week, integration: google_calendar, config: <config>, reset: true,
+           generate: {type: event, prompt: "a busy clinic week", count: 15}}
+```
+
+When the real credential arrives, `fruxon integrations connect
+<integration> --config <config>` fills the same config and publishes it.
+
 ## Wiring integrations: slots & bindings
 An agent revision never embeds credentials. Instead it declares
 **slots** that point at a tenant integration config, and tools
@@ -693,18 +762,23 @@ Discovering the ids (the CLI can't guess them for you):
 - `provider.model`: discovered, not guessed
   (`fruxon llm-providers models <provider>`). Wrong model strings
   surface as "unsupported model 'X' for provider 'Y'" at create.
-- **`definition.provider.tenantConfigId` is required.** It points at a
-  published **tenant LLM config** that supplies the API key. Omit it and
-  the run fails with `LLMProvider <x> is not configured` — even when the
-  provider *is* configured. Discover ids with
+- **`definition.provider.tenantConfigId` is required for every provider
+  you bring a credential for** — all except the hosted ones (below). It
+  points at a published **tenant LLM config** that supplies the API key.
+  Omit it and the run fails with `LLMProvider <x> is not configured` — even
+  when the provider *is* configured. Discover ids with
   `fruxon llm-providers configs list <provider>` and pick a published
   one; with none, `fruxon llm-providers connect <provider>` gets the
   user to fill one in through a link. `vertex_ai_gemini` and `vertex_ai_maas` share `vertex_ai`'s
   credential, so for them that is a `vertex_ai` config: their list
   includes it, and the server refuses to create a config under either.
-  The exception is `fruxon_managed_gemini` (Gemini run by Fruxon, billed
-  to the workspace's token balance): it has no credential and no config,
-  so an agent on it omits `tenantConfigId` and the server supplies one.
+- **Hosted providers take no config.** A provider whose surface is
+  `FRUXON_HOSTED` — `llm-providers list` marks it *hosted — no config
+  needed*; today `fruxon_managed_gemini`, Gemini run by Fruxon and billed
+  to the workspace's token balance — has no credential and no config.
+  Omit `tenantConfigId`; the server synthesises the config at run time.
+  `llm-providers connect` refuses these providers, and `draft validate`
+  accepts the omission.
 
 ## Common pitfalls
 `fruxon agents draft validate` catches most of these locally before a
@@ -752,8 +826,8 @@ semantics.
   local file is untouched; `draft pull` to reconcile, then push.
 - **Missing `provider.tenantConfigId` on the definition**: run fails
   with `LLMProvider <x> is not configured`. Pin a published tenant
-  LLM config id (see "Providers and models"). Not for
-  `fruxon_managed_gemini`, which has no config.
+  LLM config id (see "Providers and models"). Not for a hosted provider
+  (`fruxon_managed_gemini`): it has no config, so leave the field out.
 - **Integration tool `integrationConfigId` ≠ a slot id**: the tool
   call fails at run with an auth-not-found error. When present it must
   equal an `integrationSlots[].id` you declared. Omitting it is fine —
@@ -766,8 +840,13 @@ semantics.
 - **The first revision auto-deploys**: creating revision 1 (even
   without `--deploy`) sets it as the agent's current revision. It's
   harmless until the agent is wired to a connector/trigger, but don't
-  assume rev 1 is "draft-only". Subsequent revisions require an
-  explicit `--deploy` (or `agents revisions deploy`).
+  assume rev 1 is "draft-only". `--deploy` on it is skipped (nothing to
+  do). Subsequent revisions require an explicit `--deploy` (or `agents
+  revisions deploy`), which needs the `revisions:deploy` scope — not in
+  the default developer key. A 403 on the deploy step means: the revision
+  exists but isn't live; have the human run `fruxon login --preset
+  maintainer` (or deploy from the dashboard), then `agents revisions
+  deploy <agent> <n>`.
 - **The live revision is not always the newest**: after a rollback,
   newer revisions sit above the one that runs. `fruxon agents revisions
   list <agent>` marks the live one with ★, and `agents revisions deploys
@@ -855,7 +934,7 @@ top level** — there is no `create` wrapper, and no `flow`.
     "provider": {
       "providerId": "<provider>",            // e.g. openai, anthropic
       "model": "<discovered-model>",         // llm-providers models <provider>
-      "tenantConfigId": "<llm-config-GUID>", // REQUIRED — llm-providers configs list <provider>
+      "tenantConfigId": "<llm-config-GUID>", // llm-providers configs list <provider>; omit for a hosted provider
       "builtInTools": [
         {"toolKey": {"integrationId": "", "id": "web_search"}}
       ]
@@ -874,7 +953,7 @@ top level** — there is no `create` wrapper, and no `flow`.
 
 For a pure-LLM agent with no external calls, drop `integrationSlots` /
 `integrationBindings` / `definition.tools` and keep just the provider
-(still with `tenantConfigId`).
+(still with `tenantConfigId`, unless the provider is hosted).
 
 Turning on a capability is one more key on `definition` — nothing else
 moves:

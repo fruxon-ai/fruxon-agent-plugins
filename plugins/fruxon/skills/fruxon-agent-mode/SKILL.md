@@ -34,8 +34,28 @@ In agent mode the CLI:
 - Drops banners, spinners, and chrome from stderr
 - Switches `fruxon agents draft run` and `fruxon agents tests watch` to
   newline-delimited JSON on stdout
-- Refuses any path that would block on stdin (browser login, `--edit`,
-  missing `--yes`) with a typed exit code instead of hanging
+- Refuses any path that would block on stdin (`--edit`, missing `--yes`)
+  with a typed exit code instead of hanging
+- Turns `fruxon login` into a relay: the approval link comes out as JSON
+  for you to hand to the human (see "Signing in" below)
+
+## Signing in from an agent
+
+If `FRUXON_TOKEN` is set, every command already uses it — skip login.
+Otherwise `fruxon login` runs the device flow and needs the human only for
+one click. Run it **in the background** (it waits up to the grant's expiry,
+~10 minutes, far past a foreground tool timeout) and read its stdout:
+
+```
+{"event":"device_authorization","verification_uri_complete":"https://app.fruxon.com/device-auth?user_code=WDJBMJHT","verification_uri":"https://app.fruxon.com/device-auth","user_code":"WDJB-MJHT","preset":"developer","expires_in_seconds":600,"action":"Relay …"}
+```
+
+Relay `verification_uri_complete` and `user_code` to the human and ask them
+to approve it in their browser. The command polls on its own and, once
+approved, prints `{"event":"signed_in","workspace":…,"key":"fx_pat_…(redacted)"}`
+and exits 0; an expired grant exits `12`. The key goes straight to the
+keychain — never ask for one, and never put a key on a command line.
+`--preset maintainer` requests deploy rights.
 
 ## Exit codes — typed, stable, sufficient for retry logic
 
@@ -44,7 +64,7 @@ Every failure classifies into one of these:
 | Code | Slug | Meaning |
 |---:|---|---|
 | 0 | — | Success |
-| 1 | `generic` | Unclassified failure (legacy paths, user-cancel) |
+| 1 | `generic` | Unclassified failure (legacy paths, user-cancel). |
 | 2 | `usage` | Parse error — unknown flag, missing argument, unknown command, a group invoked with no subcommand. At every depth, including a bad flag on `fruxon` itself. Never a crash report. |
 | 10 | `auth_required` | 401/403, no credentials, missing scope |
 | 11 | `not_found` | 404 — the agent / integration / tool / key doesn't exist |
@@ -53,6 +73,7 @@ Every failure classifies into one of these:
 | 14 | `server_error` | 5xx, mid-stream server failure |
 | 15 | `network_error` | Couldn't reach the API |
 | 16 | `interactive_required` | A blocking prompt was hit in agent mode |
+| 141 | — | stdout's reader left early (`fruxon describe \| head`): 128 + SIGPIPE, like any Unix tool. No envelope, no crash report — nothing went wrong. |
 
 A driver branching retry/abort decisions should match on these
 numbers, not on prose. The codes are picked outside Python's (0/1/2)
@@ -72,6 +93,18 @@ code table above. `message` is plain text — Rich markup is stripped.
 `hint` may be absent when there's no actionable next step. To recover,
 read stderr's last JSON line on non-zero exit.
 
+`request_id` is present when the failure came from an API request: the
+`X-Correlation-ID` the CLI sent, which the server writes on every log
+line for that request. If you tell the human the platform failed (exit
+14 or 15), give them this id to quote to support. The last failure is
+also kept in `<config dir>/last-failure.json` (no arguments or option
+values in it).
+
+`feedback` is present on a server error (exit 14): the command that
+reports it, `fruxon feedback "<what you were doing>"`. A crash
+(`internal_error`) puts the same command, with its `--crash-log`, in
+`report`. See "Reporting a problem" below for when to run it.
+
 ## Interactive guards — what to do when you hit one
 
 These paths block on a human under normal use; in agent mode they
@@ -80,8 +113,8 @@ the bypass flag.
 
 | Path | Bypass |
 |---|---|
-| `fruxon login` (no key) | Don't sign in on the human's behalf. If `FRUXON_TOKEN` is set, every command already uses it — skip login. Otherwise ask the human to run `fruxon login` in their own terminal. Never put a key on a command line. |
 | `fruxon agents draft run --edit` | Pass the value via `-p key=value` or `--params file.json` |
+| `fruxon feedback` with no message (it would open an editor) | Pass the message as the argument. If it still exits 16, telemetry is off on this machine and agent reports are off with it: tell the human instead. |
 | `agents draft run --file <other>` replacing an existing server draft (a file other than the pulled one, or `-`) | `--restore` to run it as a one-off and put the current draft back afterwards (what you want for a control/A-B variant), or `--yes` to keep it in the draft. The server draft is what `revisions create` publishes. |
 | `keys delete` (no --yes) | Pass `--yes` |
 | `agents tests delete` (no --yes) | Pass `--yes` |
@@ -92,9 +125,9 @@ the bypass flag.
 | `agents reply-style activate` / `off` / `delete` (no --yes) | Pass `--yes` — **but only on the human's say-so.** It changes how the agent writes to customers from their next turn. |
 | `conversation-imports delete`, `agents reply-style detach` / `discard` / `cancel-build` (no --yes) | Pass `--yes`. |
 | `agents improvements approve` (no --yes) | Pass `--yes` — **but only on the human's say-so**, with `--expected-base` and `--version` as you showed them the card (`improvements get -o json`: `baseRevision` is not the live one — read `agents get` for `currentRevision`). It deploys a new revision to all traffic; if either value moved, nothing is sent (exit 13). |
-| `agents improvements settings --on` / `review` (no --yes) | Pass `--yes` — reviewing spends model credits from the review budget every day; `review` spends it on one conversation now. |
+| `agents improvements settings --on` / `--run-on` / `review` (no --yes) | Pass `--yes` — reviewing spends every day, in credits on Fruxon's reviewer model or from the review budget on a model of your own, and `--run-on` changes which; `review` spends it on one conversation now (the refusal names the credits). |
 | `agents improvements compare` / `recheck` (no --yes) | Pass `--yes` — every replayed conversation runs the agent twice and a judge once. `--wait` blocks until the runs end; `results` reads them later. |
-| `agents improvements revise` (no --yes) | Pass `--yes` — the reviewer's model reads every confirmed-worse case, charged to the review budget. |
+| `agents improvements revise` (no --yes) | Pass `--yes` — the reviewer's model reads every confirmed-worse case, charged to the review budget or in credits on Fruxon's model. |
 | `agents evaluations cancel` (no --yes) | Pass `--yes`. |
 | `agents improvements dismiss` (no --yes) | Pass `--yes`. The reviewer reads the reason in every later review, and `WRONG` is never raised again — pick the reason the human gave. |
 | `agents draft evaluate` (no --yes) | Pass `--yes` — it costs real money |
@@ -312,13 +345,39 @@ network behavior, not token-by-token text:
 
 It runs until `turn_complete` (outcome `replied` / `silent` /
 `suspended` / `failed`), then exits 0 — a parked run emits
-`turn_complete` with outcome `suspended`. Resolve the gate
-**out-of-band**: `agents sandbox answer <session> <operationId>` for a
-`pending_consult`, `agents approvals respond` for a `pending_approval`
-(it carries `requestId`), then re-run `stream` to see the resumed
-reply. `blocked` frames report real sends the sandbox prevented — assert
-on them for "no-leak" tests. `typing` / `status` liveness frames are
-dropped in agent mode.
+`turn_complete` with outcome `suspended`. `blocked` frames report real
+sends the sandbox prevented — assert on them for "no-leak" tests.
+`typing` / `status` / `heartbeat` liveness frames are dropped in agent mode.
+
+**The stream shows only what happens after it connects.** Nothing is
+replayed and `turn_complete` is never stored, so a turn that ended before
+`stream` attached never shows, and `stream` waits forever. A silent turn
+records no transcript row either, so `--poll` can't show it. Send with
+`--wait` instead — `agents sandbox turn`, `fork --send`, `fire` and
+`agents improvements test --send` all take it. It opens the stream before
+the turn goes out and follows it to `turn_complete`, printing a `sent`
+record (what the command prints with `-o json`) after `start`:
+
+```json
+{"type":"start","schema_version":1,"stream":"sandbox","session":"s_abc"}
+{"type":"sent","status":"accepted","session":"s_abc","revisionPolicy":"DRAFT","confirmWrites":true}
+{"type":"tool_call","toolName":"stay_silent","toolCallId":"tc-1","argsSummary":"…"}
+{"type":"turn_complete","outcome":"silent"}
+{"type":"stopped"}
+```
+
+For `fork --send --wait` the `sent` record is the fork (`sessionId`,
+`participantId`, `targetSessionId`, `resendText`, …). `--wait` exits 0 only
+after `turn_complete`. If the stream closes first, or `--timeout` seconds pass
+(default 300 — a turn the server accepts without starting a run never sends
+`turn_complete`), `stopped` follows the last frame and the command exits 1
+with an error envelope. Whatever you missed, the run itself is in
+`agents executions list <agent> --origin TEST --session <ts_…>`.
+
+Resolve a gate **out-of-band**: `agents sandbox answer <session>
+<operationId>` for a `pending_consult`, `agents approvals respond` for a
+`pending_approval` (it carries `requestId`). To see the resumed reply,
+start `stream` (in the background) *before* you resolve the gate.
 
 `agents sandbox fork` returns both `resendText` and `prefillText`. If you
 send the customer's message yourself, send `resendText`: the platform
@@ -372,6 +431,38 @@ the server's response so you don't need a follow-up GET. Highlights:
   `execution_record_id`.
 - `fruxon agents tests list -o json` — each chat carries the same `state`
   (always) and `turn` (unless `IDLE`), in the server's camelCase.
+
+## Reporting a problem
+
+`fruxon feedback "<message>"` files a report with Fruxon support. It
+doesn't prompt in agent mode, since nothing is changed or deleted, and
+prints `{"id", "reference", "receivedAt"}` on stdout. Tell the human
+you filed it and give them the `reference` (`fb-3f2a91c0`). Replies go
+to the email on their Fruxon account.
+
+**When to file:** when the platform failed (exit 14, or a crash with
+`internal_error`) and you've already followed the error's hint and
+retried once, or when a command did something other than what its help
+or a guide says. File once per distinct problem, not once per attempt.
+A 4xx is almost always your own input: read its hint, don't report it.
+
+**What to write:** what you ran, what you expected, and what happened
+instead, in a few plain sentences. The CLI attaches the last failed
+command itself (its name, error and request id, from the last hour in
+this workspace), so you don't need to paste the error. For a crash, pass
+the log the envelope names: `--kind bug --crash-log <crash_log>`. Use
+`--kind idea` for a missing feature and `--kind docs` for a wrong guide
+or help text.
+
+**What never to include:** customer data, conversation content,
+credentials or secrets. Fruxon keys are masked by the server anyway.
+
+**When it isn't sent:** exit 10 (not signed in, or the key was refused)
+and exit 11 (a server that doesn't take reports yet) mean nothing was
+sent; tell the human to email support@fruxon.com. Exit 16 means agent
+reports are off on this machine because telemetry is off. One sender may
+file 20 reports in a day; past that it exits 1 and says when the next can
+go. `--dry-run` prints the exact body without sending it.
 
 ## When to load the task guides
 

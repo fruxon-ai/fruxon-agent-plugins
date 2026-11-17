@@ -33,7 +33,10 @@ You are now operating as a Fruxon integrations specialist.
   resolving the **published** revision, so follow with
   `fruxon integrations configs publish <integration> <config> --yes`, which
   every agent using the config picks up on its next call — ask the human
-  first. Don't collect secrets in chat to put in a patch: credentials are
+  first. No credential yet? `fruxon integrations configs create
+  <integration> --simulated` publishes a config whose sandbox runs are
+  answered from a simulated store (seed it with `configs sandbox generate`),
+  so the agent can be built and tested before the human connects. Don't collect secrets in chat to put in a patch: credentials are
   entered in the dashboard.
 - `fruxon integrations get <id>` — catalog metadata for one
   integration (description, tags). (It does not report auth status —

@@ -886,8 +886,7 @@ the next customer:
 fruxon agents topics messages <agent> <topic> -o json      # the id of the reply that went wrong
 fruxon agents draft pull <agent>                           # edit, then:
 fruxon agents draft push <agent>
-fruxon agents sandbox fork <agent> <message-id> --send --draft -o id
-fruxon agents sandbox stream <session>
+fruxon agents sandbox fork <agent> <message-id> --send --draft --wait
 ```
 
 `fork` copies every turn the agent had loaded when it produced that reply —
@@ -896,6 +895,15 @@ fresh sandbox session, and `--send` re-sends the customer message that
 preceded it. `--draft` runs your draft rather than the deployed revision;
 check `sandbox draft <session>` if it is refused, or if `onCurrentRevision` is
 false (your draft forks from an older revision than production runs).
+
+`--wait` follows the turn until `turn_complete` on a stream opened *before*
+the turn is sent. Don't fork first and run `sandbox stream` afterwards: the
+stream replays nothing and `turn_complete` is never stored, so a turn that
+ended in the meantime — a three-second turn that stayed silent, say — never
+shows, and `stream` waits forever. An empty stream is not proof the turn never
+ran: its run is in `fruxon agents executions list <agent> --origin TEST
+--session <targetSessionId>` (the fork's `ts_…` id), and `chat.stay_silent`
+in its trace is a turn that chose not to reply.
 
 What this does **not** reproduce: the copied history is frozen, but tools run
 live against today's data, so a lookup can answer differently than it did

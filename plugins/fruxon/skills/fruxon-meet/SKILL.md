@@ -37,6 +37,7 @@ You are now operating with knowledge of how Fruxon works.
 ```
 fruxon describe                        # whole CLI tree as JSON (for AI agents)
 fruxon examples [topic]                # curated runnable snippets
+fruxon feedback "<what happened>"      # report a CLI problem to Fruxon support
 fruxon agents list / get / create --application <app>
 fruxon agents schema <agent>           # typed parameter metadata
 fruxon agents validate <agent> -p k=v  # pre-flight a payload (no execution)
@@ -61,13 +62,14 @@ fruxon agents approvals respond <agent> <id> --approve|--reject  # answer the ga
 fruxon agents memory list <agent> --subject <s>  # what the agent remembers (filter by subject/search/scope)
 fruxon agents memory forget-subject <agent> <s>  # GDPR-forget a subject (needs --yes in agent mode)
 fruxon agents sandbox open/turn/fire/stream/answer/close  # drive a network sandbox e2e (captures+blocks real sends)
-fruxon agents sandbox fork <agent> <message-id> --send --draft  # replay a real bad reply against your draft, same history
+fruxon agents sandbox fork <agent> <message-id> --send --draft --wait  # replay a real bad reply against your draft, same history
 fruxon agents sandbox test <file|dir>  # run scenario e2e tests of an agent (exit 0 pass / 1 fail; --junit)
 fruxon integrations list / create
 fruxon integrations connect <integration>  # create a config + mint a link a human types an API key / token / password in, or signs in to (OAuth)
 fruxon integrations authorize <integration>  # the same, for an integration's OAuth method only
 fruxon integrations triggers <integration>  # event types (+ payload paths) an integration can fire an agent on
 fruxon integrations configs list / get / update / publish <integration>  # saved credentials; update edits the draft, publish makes it live
+fruxon integrations configs create <integration> --simulated  # no credentials yet: sandbox runs answered from a simulated store (configs sandbox generate/import/…)
 fruxon tools list <integration> / create
 fruxon assets create/list/get/wait/delete  # the indexed RAG assets an agent's assetConfig attaches
 fruxon assets search/documents/chunks <a>  # what the INDEX holds — distinct from the authored corpus below
@@ -117,6 +119,9 @@ fruxon agents draft run <agent> --replay <run> [--stages stages.json]  # the sam
 fruxon triggers ledger walk <t> --item <item> --answer <ask>=<value> --yes  # chain stage tests through the shape; stopped.code says where a real pass stops (walk-steps / stage-test / cancel-stage-test)
 fruxon triggers set-stages <t> --file + triggers revisions list / restore  # edit a work shape, and undo it
 fruxon participants list / create / enable / disable / delete  # agent-network participants (--yes-gated delete)
+fruxon escalations policy / set-policy <agent>  # who a hand-off reaches: the desk's operators and working hours
+fruxon escalations desks list|create|attach    # make an escalation desk and attach it to a channel or 'other'
+fruxon working-hours list / create / update <id>  # schedules a desk follows (not the agent's own hours — those go in its prompt)
 fruxon applications list / get / roles # the container that owns agents; `roles` = who holds each roster role
 fruxon applications entry-points list [<app>]  # how inbound reaches an agent; no <app> = every claimed address
 fruxon applications entry-points connect/attach/move/disconnect <app>  # wire a doorway (connect prints the webhook URL once)
