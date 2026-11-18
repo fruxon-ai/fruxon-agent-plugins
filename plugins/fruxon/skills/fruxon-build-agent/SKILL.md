@@ -77,7 +77,9 @@ revision from it.
      async, and an asset is not searchable until its operation completes.
      `fruxon assets list` / `get <id>` show existing asset ids and
      queryable status for `assetConfig.assetIds`; `operations <id>` shows
-     ingestion progress/history.
+     ingestion progress/history. To change an uploaded file's contents,
+     `fruxon assets replace-file <id> --file ./new.md --yes --wait` keeps
+     the id, so nothing needs re-attaching; don't delete and re-create.
    - `fruxon metrics list` — evaluation-metric ids for an LLM judge.
      `definition.judge.rubric.metrics[]` is a list of `{metricId, weight}`
      (note the `rubric` level); the `id` column is the `metricId`,
@@ -429,7 +431,8 @@ agent still says it handed off. Before relying on it:
 
 ```bash
 fruxon escalations policy <agent>                      # empty ladder = nobody
-fruxon participants list                               # operator participant ids
+fruxon escalations operators candidates --agent <agent>  # internal people who can be operators
+fruxon escalations operators add <id> --agent <agent>  # a desk only takes the Application's operators
 fruxon escalations set-policy <agent> --operator <id>  # staff the desk (Application-wide)
 # no desk at all? make one and attach it ('other' = no-channel chats, or an entry point id):
 fruxon escalations desks create --agent <agent> --name "Front desk" --operator <id> --attach other

@@ -72,6 +72,7 @@ fruxon integrations configs list / get / update / publish <integration>  # saved
 fruxon integrations configs create <integration> --simulated  # no credentials yet: sandbox runs answered from a simulated store (configs sandbox generate/import/…)
 fruxon tools list <integration> / create
 fruxon assets create/list/get/wait/delete  # the indexed RAG assets an agent's assetConfig attaches
+fruxon assets replace-file <a> --file …  # new contents for an uploaded file, same id: agents using it read the new file
 fruxon assets search/documents/chunks <a>  # what the INDEX holds — distinct from the authored corpus below
 fruxon knowledge-bases list / get / create / update  # the authored, reviewable corpus behind a manual_knowledge asset
 fruxon knowledge-bases publish <kb>    # the step that makes authored knowledge findable; only PUBLISHED documents travel
@@ -121,6 +122,7 @@ fruxon triggers set-stages <t> --file + triggers revisions list / restore  # edi
 fruxon participants list / create / enable / disable / delete  # agent-network participants (--yes-gated delete)
 fruxon escalations policy / set-policy <agent>  # who a hand-off reaches: the desk's operators and working hours
 fruxon escalations desks list|create|attach    # make an escalation desk and attach it to a channel or 'other'
+fruxon escalations operators list|candidates|add|remove  # who a desk may page (internal people only; --yes-gated remove)
 fruxon working-hours list / create / update <id>  # schedules a desk follows (not the agent's own hours — those go in its prompt)
 fruxon applications list / get / roles # the container that owns agents; `roles` = who holds each roster role
 fruxon applications entry-points list [<app>]  # how inbound reaches an agent; no <app> = every claimed address
