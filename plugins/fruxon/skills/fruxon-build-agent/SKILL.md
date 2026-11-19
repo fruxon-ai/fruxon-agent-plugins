@@ -296,6 +296,16 @@ it from your app via the SDK (`FruxonClient.stream` / `execute`).
 > min_score}` for an opt-in **semantic** check that scores the reply against a
 > tenant eval metric (by id / key / name). See `fruxon examples sandbox`.
 >
+> **Testing memory across sessions?** A sandbox session has no memory by
+> default — nothing is recalled, writes are discarded. Open each session with
+> `fruxon agents sandbox open <agent> --keep-memory`: it gets real memory in a
+> separate sandbox realm that later `--keep-memory` sessions recall and live
+> runs never see. Tell session A a fact and `close` it; open session B with
+> `--keep-memory` and ask — the agent should recall. A session opened without
+> the flag should not (your control). `fruxon agents memory list <agent>
+> --realm SANDBOX` shows what was stored; `fruxon agents memory reset-sandbox
+> <agent> --yes` gives the next test a clean slate.
+>
 > **Fixing a reply a real customer got?** Don't retype the conversation:
 > `fruxon agents sandbox fork <agent> <message-id> --send --draft --wait` copies
 > the history the agent had at that turn into a sandbox session, re-sends the
@@ -414,7 +424,6 @@ for their fields — this is the map of what exists:
 | `delegation` | `spawn_subtask` — fan work out to child runs |
 | `network` | Consult / delegate to roster peers |
 | `escalation` | `escalate_to_human` — hand the conversation to an operator |
-| `pipelines` | `run_pipeline` — map a collection pipeline over a list (ids from `fruxon pipelines list`) |
 | `asyncExecution` | Await-vs-background policy for async tools |
 | `outputContract` | Constrain the output to JSON / a JSON schema |
 | `dialogueProfile` | A second prompt + toolset for conversational runs |
@@ -439,6 +448,31 @@ fruxon escalations desks create --agent <agent> --name "Front desk" --operator <
 fruxon agents check <agent>                            # "Escalation" row; draft validate --online warns too
 ```
 
+**A sandbox escalation is a rehearsal.** In `agents sandbox turn` the desk
+is resolved and the agent hears the outcome, but nobody is paged and nothing
+reaches `fruxon escalations list` — the tool frames carry `"rehearsal": true`
+and the text output says "escalation rehearsed". `escalations list
+--include-rehearsals` lists them on servers that support it.
+
+### Going live on a channel: webhook and strangers
+A connected messaging channel answers only when two things outside the body
+are right. The provider must know where to deliver: `entry-points connect`
+registers the webhook for providers Fruxon can register itself (Telegram) and
+reports `webhook.status` (`INSTALLED`, `ALREADY_INSTALLED`, `UNVERIFIED`,
+`MANUAL_INSTALL_REQUIRED`, `FAILED`); if it is not installed, `fruxon
+integrations configs webhook rotate <integration> <config> --yes` mints and
+registers a fresh one. And a
+channel on `REQUEST_ACCESS` (the default) holds every new sender until
+someone approves them:
+
+```bash
+fruxon integrations configs webhook inspect telegram <config>   # registeredToThisConfig: false = nothing arrives
+fruxon access-requests list --agent <agent>                    # who is waiting
+fruxon access-requests approve <id>                            # let one in
+fruxon applications update <app> --unknown-senders PROVISION   # or stop queueing new senders at all
+fruxon agents check <agent>                                    # "Inbound path" fails with no webhook; "Unknown senders" warns
+```
+
 **Hours live in two places, for two things.** The agent's own opening
 hours — what it tells customers ("we're open Sun–Thu 8–20") — belong in its
 prompt or a knowledge-base article. A **working-hours schedule** governs only
@@ -458,29 +492,6 @@ tool calls — stays in `systemPrompt`. Move the long per-case detail (one
 procedure per team, say) into skills, and write each `description` as the
 condition for loading it. Skill content is read live, not pinned to the
 revision: `fruxon skills update` changes every agent using it on its next run.
-
-### Binding a collection pipeline
-`pipelines.bindings[]` is an **allowlist**: `run_pipeline` refuses any
-pipeline id the step does not name. Get the ids from the CLI rather than a
-dashboard URL:
-
-```
-fruxon pipelines list -o id                        # every pipeline you can reach
-fruxon pipelines list --application <application>  # only what that Application owns
-fruxon pipelines get <id>                          # one pipeline's reusable source ids
-
-# Both halves of a binding in one call — ids and their sources together:
-fruxon pipelines list -o json | jq '.[] | {id, sourceIds: [.sourceRefs[].sourceId]}'
-```
-
-Each binding takes `pipelineId`, and optionally `allowedSourceIds` — the
-operator-sanctioned sources a bound agent may run against. A pipeline with
-no reusable sources uses its embedded one and needs no `allowedSourceIds`
-at all.
-
-`fruxon agents draft schema` is authoritative for the binding's field
-names; nothing validates a `pipelines` capability config locally, so a
-wrong key is only caught server-side at revision-create.
 
 ### Migrating an older body
 A body with `flow` / `steps` / `edges` is an older contract and the
