@@ -61,6 +61,7 @@ fruxon agents approvals list <agent>   # pending human-in-the-loop approvals a r
 fruxon agents approvals respond <agent> <id> --approve|--reject  # answer the gate (needs --yes in agent mode)
 fruxon agents memory list <agent> --subject <s>  # what the agent remembers (filter by subject/search/scope)
 fruxon agents memory forget-subject <agent> <s>  # GDPR-forget a subject (needs --yes in agent mode)
+fruxon agents memory reset-sandbox <agent> --yes # wipe what --keep-memory sandbox sessions stored
 fruxon agents sandbox open/turn/fire/stream/answer/close  # drive a network sandbox e2e (captures+blocks real sends)
 fruxon agents sandbox fork <agent> <message-id> --send --draft --wait  # replay a real bad reply against your draft, same history
 fruxon agents sandbox test <file|dir>  # run scenario e2e tests of an agent (exit 0 pass / 1 fail; --junit)
@@ -126,7 +127,12 @@ fruxon escalations operators list|candidates|add|remove  # who a desk may page (
 fruxon working-hours list / create / update <id>  # schedules a desk follows (not the agent's own hours — those go in its prompt)
 fruxon applications list / get / roles # the container that owns agents; `roles` = who holds each roster role
 fruxon applications entry-points list [<app>]  # how inbound reaches an agent; no <app> = every claimed address
-fruxon applications entry-points connect/attach/move/disconnect <app>  # wire a doorway (connect prints the webhook URL once)
+fruxon applications entry-points connect/attach/move/disconnect <app>  # wire a doorway (connect registers the provider webhook where it can)
+fruxon applications entry-points get <entry-point>  # one doorway; the Application is optional for a claimed address
+fruxon applications entry-points update <app> <ep> --unknown-senders PROVISION  # how this channel treats strangers
+fruxon applications update <app> --unknown-senders PROVISION  # the Application-wide default
+fruxon access-requests list / approve / reject  # senders a REQUEST_ACCESS channel is holding (no answer until approved)
+fruxon integrations configs webhook generate|rotate|apply|inspect|remove <integration> <config>  # the provider webhook (Telegram)
 fruxon environments list / get / create / update / archive  # end-customer environments (slugs runs attribute to)
 fruxon capabilities list / create / update / delete  # consult-routing vocabulary
 fruxon participants bind / roster <p> <agent> + fruxon agents roster <agent>  # consult wiring

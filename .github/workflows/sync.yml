@@ -1,9 +1,10 @@
 name: Sync skills
 
-# Pull the skills from the latest fruxon release on PyPI and commit them
-# when they changed. Runs daily so a new SDK release reaches plugin users
-# without anyone touching this repo; run it by hand after a release to
-# ship sooner.
+# Pull the skills from a fruxon release on PyPI and commit them when they
+# changed. fruxon-sdk's Release workflow fires the `fruxon-released`
+# dispatch right after it publishes, so the plugin follows the CLI within
+# minutes. The daily run is the fallback for a missed dispatch; run it by
+# hand to sync a specific version.
 
 on:
   schedule:
@@ -14,6 +15,9 @@ on:
         description: 'fruxon version to sync (blank = latest)'
         required: false
         type: string
+  repository_dispatch:
+    # Sent by fruxon-sdk's Release workflow with client_payload.version.
+    types: [fruxon-released]
 
 permissions:
   contents: write
@@ -33,7 +37,11 @@ jobs:
           python-version: '3.13'
 
       - name: Sync from PyPI
-        run: python scripts/sync_skills.py ${{ inputs.version }}
+        # Through env, not interpolated into the script: the version comes
+        # from a dispatch payload or a form field.
+        env:
+          VERSION: ${{ inputs.version || github.event.client_payload.version }}
+        run: python scripts/sync_skills.py $VERSION
 
       - name: Commit if changed
         run: |

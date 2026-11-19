@@ -19,6 +19,8 @@ import io
 import json
 import shutil
 import sys
+import time
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -31,10 +33,23 @@ MANIFESTS = (PLUGIN / ".claude-plugin" / "plugin.json", PLUGIN / "plugin.json")
 PREFIX = "fruxon/skills/"
 
 
+def fetch_meta(url: str, attempts: int) -> dict:
+    # A release dispatch can arrive before PyPI's JSON API lists the new
+    # version, so a pinned version gets a few tries before giving up.
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(url) as resp:
+                return json.load(resp)
+        except urllib.error.HTTPError as err:
+            if err.code != 404 or attempt == attempts - 1:
+                raise
+            time.sleep(30)
+    raise AssertionError("unreachable")
+
+
 def fetch_wheel(version: str | None) -> tuple[str, bytes]:
     url = f"https://pypi.org/pypi/fruxon/{version}/json" if version else "https://pypi.org/pypi/fruxon/json"
-    with urllib.request.urlopen(url) as resp:
-        meta = json.load(resp)
+    meta = fetch_meta(url, attempts=10 if version else 1)
     release = meta["info"]["version"]
     wheel = next((f for f in meta["urls"] if f["packagetype"] == "bdist_wheel"), None)
     if wheel is None:

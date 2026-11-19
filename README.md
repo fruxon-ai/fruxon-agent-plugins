@@ -50,8 +50,10 @@ codes) with no setup; for Codex that needs fruxon 0.14.1 or later.
 ## How it stays current
 
 The skills are written alongside the CLI in the Fruxon SDK and ship in its
-PyPI wheel. A daily workflow ([`sync.yml`](.github/workflows/sync.yml))
-copies them from the latest release and sets both manifests' version to match.
+PyPI wheel. [`sync.yml`](.github/workflows/sync.yml) copies them from a
+release and sets both manifests' version to match. The SDK's Release
+workflow triggers it (a `fruxon-released` repository dispatch) as soon as a
+version is on PyPI; a daily run catches any release whose dispatch was missed.
 To sync by hand:
 
 ```bash

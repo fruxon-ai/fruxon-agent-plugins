@@ -133,6 +133,7 @@ the bypass flag.
 | `agents draft evaluate` (no --yes) | Pass `--yes` — it costs real money |
 | `agents approvals respond` / `cancel` (no --yes) | Pass `--yes` — **but stop first.** This responds to a *human-in-the-loop* gate; a response can run the gated tool. Only auto-`--yes` if the human you're acting for explicitly told you to approve/reject this request. Defaulting to approve defeats the gate. |
 | `agents memory forget-subject` (no --yes) | Pass `--yes` — it irreversibly deletes a subject's memories (GDPR forget). |
+| `agents memory reset-sandbox` (no --yes) | Pass `--yes` — it deletes the agent's sandbox-realm memories (live ones are kept). |
 | `triggers fire` (no --yes) | Pass `--yes` — it runs the bound agent(s) now (cost + side effects). |
 | `triggers ledger walk` (no --yes) | Pass `--yes` — every step is a paid model run on the agent's test budget (up to `--max-steps`, default 10). It writes nothing; read `stopped.code` in the JSON, since it exits 0 whenever it ran. |
 | `triggers delete` / `unbind` (no --yes) | Pass `--yes` — removes the trigger / its agent wiring. |
@@ -348,6 +349,9 @@ It runs until `turn_complete` (outcome `replied` / `silent` /
 `turn_complete` with outcome `suspended`. `blocked` frames report real
 sends the sandbox prevented — assert on them for "no-leak" tests.
 `typing` / `status` / `heartbeat` liveness frames are dropped in agent mode.
+A `tool_call` / `tool_result` for `escalate_to_human` carries
+`"rehearsal": true`: in the sandbox nobody is paged and no row reaches
+`fruxon escalations list`, so do not wait for one there.
 
 **The stream shows only what happens after it connects.** Nothing is
 replayed and `turn_complete` is never stored, so a turn that ended before
