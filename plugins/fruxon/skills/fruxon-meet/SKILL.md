@@ -70,7 +70,7 @@ fruxon integrations connect <integration>  # create a config + mint a link a hum
 fruxon integrations authorize <integration>  # the same, for an integration's OAuth method only
 fruxon integrations triggers <integration>  # event types (+ payload paths) an integration can fire an agent on
 fruxon integrations configs list / get / update / publish <integration>  # saved credentials; update edits the draft, publish makes it live
-fruxon integrations configs create <integration> --simulated  # no credentials yet: sandbox runs answered from a simulated store (configs sandbox generate/import/…)
+fruxon integrations configs create <integration> --simulated  # no credentials yet: sandbox runs answered from a simulated store (configs sandbox schema/generate/import/…)
 fruxon tools list <integration> / create
 fruxon assets create/list/get/wait/delete  # the indexed RAG assets an agent's assetConfig attaches
 fruxon assets replace-file <a> --file …  # new contents for an uploaded file, same id: agents using it read the new file
@@ -84,7 +84,7 @@ fruxon knowledge-bases review-queue / revisions / evidence <kb>  # what needs a 
 fruxon knowledge-bases correct <kb> <doc> -i "what is wrong"  # let the editor agent fix it; it MAY decline, which writes nothing
 fruxon knowledge-bases consolidate <kb>  # queue a report of near-duplicate clusters; a standalone pass NEVER merges
 fruxon knowledge-bases apply <kb> <run> --cluster <id>  # merge the clusters you accepted from that report (--all for every one)
-fruxon knowledge-bases source list / preview / sync / pause / resume <kb>  # the pipelines that write articles; a built source lands PAUSED
+fruxon knowledge-bases source list / preview / sync / pause / resume <kb>  # the sources that read history and write articles; a built source lands PAUSED
 fruxon agents reply-style import <agent> <exports…> --subject <owner> --yes  # chat exports in, redacted, attached; who is who is checked first
 fruxon agents reply-style build <agent> --wait  # learn a draft reply style; status shows its style + substance check (confirm-build when it sampled)
 fruxon agents reply-style show / activate <agent> <n> --yes  # read the draft as the agent will; activate reaches customers (revisions:deploy)
@@ -97,7 +97,9 @@ fruxon llm-providers configs list / get / test / publish <provider>  # saved LLM
 fruxon llm-providers configs complete <provider> <config> --model M -m TEXT  # one completion on a config, no agent: does the model follow this prompt?
 fruxon llm-providers connect <provider> / link-status  # a link the human types the API key into; never ask for it in chat
 fruxon metrics list                    # evaluation-metric ids for an LLM judge (judge.rubric.metrics)
-fruxon triggers list / create / bind / fire  # autonomy: fire agents on schedule/event (write surface)
+fruxon triggers list / create / bind / fire  # autonomy: fire agents on schedule/event/webhook (write surface)
+fruxon triggers create --webhook --agent <a> --map email=payload.email  # an outside system POSTs events; its token is issued in the console only (a token cannot mint one)
+fruxon triggers events <t> [--source webhook]  # every attempt to fire it: source, outcome, delivery id, why it fired nothing
 fruxon triggers preview-shape / test-source <t>  # dry-run a work shape: what each stage sends, what the door lists (--count for how much, startFrom for the first after:, FILTERED for what door.skipWhen drops, and each record as door.projection will store it)
 fruxon applications ledgers <app>      # every automation in an app at once: finished (30d), waiting, open questions, stuck — find which <t> to open
 fruxon triggers ledger funnel / items / cursor <t>  # the work items an automation admitted, what it extracted, what it cost

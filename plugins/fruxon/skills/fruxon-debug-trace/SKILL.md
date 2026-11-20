@@ -448,7 +448,7 @@ parent's `{results: [...]}` and each child's bare
 `{execution_record_id, status, response, session_id}`. Reaching straight
 for `.results[]` works on the parent and throws "Cannot iterate over
 null" on every child. `fromjson` inside `jq` also saves a second process
-and keeps the whole thing one pipeline.
+and keeps the whole thing one command.
 
 > ⚠️ **Payloads are double-encoded, and non-ASCII is escaped.** A
 > spawn's `prompts` parameter is a JSON *string* inside the parameters
@@ -485,6 +485,13 @@ A step's output is rarely the mystery. The mystery is the state it read.
   the schedule. It also says where each binding **delivers** (`delivers
   to` / `bindings[].outputDestination`) — the first place to look when a
   run COMPLETED but its reply never arrived.
+- **No run at all? Ask the trigger first.** `fruxon triggers events
+  <trigger-id>` lists every attempt to fire it, with `source` (SCHEDULE /
+  MANUAL / INTEGRATION_EVENT / WEBHOOK) and `outcome`. FILTERED names the
+  filter condition that dropped it; a WEBHOOK row that FAILED carries why
+  the posted body could not fill the mappings (and fired nothing). No row
+  at all for a webhook trigger means the call never reached it — a wrong
+  or missing token is a 404 to the caller and leaves nothing here.
 - **A ledger automation's state is the item, not memory.** When the run's
   trigger type is `LEDGER_ITEM`, the durable state is the work item the
   sweep claimed — so the question "what did this run know?" is answered by

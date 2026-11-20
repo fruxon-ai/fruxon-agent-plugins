@@ -99,8 +99,8 @@ revision from it.
      roster, and a contact's `--participant` binding reference. Paginated
      (default `--limit 50`) — pass `--all` when populating a roster from a
      tenant that might have more than that, or the id list silently stops
-     short. `fruxon triggers list` enumerates the scheduled / event
-     sources that fire agents (these live outside the draft, so this
+     short. `fruxon triggers list` enumerates the scheduled / event /
+     webhook sources that fire agents (these live outside the draft, so this
      is the only way to see them); `fruxon integrations triggers
      <integration>` lists the event *types* an integration can fire on —
      each descriptor's `id` is the `eventType` a `triggers create` body
@@ -706,7 +706,8 @@ runs never read it.
 ```bash
 # 1. A simulated config, published, no credentials (one step):
 fruxon integrations configs create google_calendar --simulated -o json   # → id
-# 2. Seed the store it answers from (or `sandbox import --file entities.json`):
+# 2. Seed the store it answers from (or `sandbox import --file entities.json` — the entity
+#    types, id templates and payload shapes it takes: `fruxon integrations configs sandbox schema google_calendar`):
 fruxon integrations configs sandbox generate google_calendar <config> \
     --type event --count 15 --prompt "Clinic appointments next week, 20-minute slots, some gaps" \
     --context ./kb/services-and-hours.md   # facts the data must agree with (the agent's KB text)
