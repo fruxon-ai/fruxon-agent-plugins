@@ -33,6 +33,13 @@ saw, not just its status.
 
 ## 1. Find the run
 
+**A draft run that just failed** needs none of this first:
+`fruxon agents draft run` reads the record and trace itself and prints
+`Run FAILED at step <name>: <error>` (exit `17`; `status` / `error` /
+`failedStep` in `-o json`), and `fruxon agents tests show` does the same
+for a test chat whose last turn failed. Walk the trace below when that
+line isn't enough.
+
 ```
 fruxon agents executions list <agent>                    # newest-first
 fruxon agents executions list <agent> -s FAILED -n 50

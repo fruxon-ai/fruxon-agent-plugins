@@ -84,6 +84,12 @@ fruxon knowledge-bases review-queue / revisions / evidence <kb>  # what needs a 
 fruxon knowledge-bases correct <kb> <doc> -i "what is wrong"  # let the editor agent fix it; it MAY decline, which writes nothing
 fruxon knowledge-bases consolidate <kb>  # queue a report of near-duplicate clusters; a standalone pass NEVER merges
 fruxon knowledge-bases apply <kb> <run> --cluster <id>  # merge the clusters you accepted from that report (--all for every one)
+fruxon knowledge-bases propose <kb> <run> --cluster <id>  # have the consolidator DRAFT the merge, writing nothing; then approve --cluster <id> --yes
+fruxon knowledge-bases keep-separate <kb> <run> --cluster <id> --note "why"  # a person's "not one article"; writes nothing
+fruxon knowledge-bases check-facts <kb> <run> --all  # do copies of a repeated fact agree? disagreeing ones become contradictions
+fruxon knowledge-bases contradictions <kb>  # articles that disagree; resolve-contradiction (--align-to/--condition/--archive) or dismiss-contradiction
+fruxon knowledge-bases review-summary  # held drafts + open contradictions across every base
+fruxon knowledge-bases enable-consolidation <kb> --domain "…" --provider … --model …  # a base without a source needs its own consolidator + editor
 fruxon knowledge-bases source list / preview / sync / pause / resume <kb>  # the sources that read history and write articles; a built source lands PAUSED
 fruxon agents reply-style import <agent> <exports…> --subject <owner> --yes  # chat exports in, redacted, attached; who is who is checked first
 fruxon agents reply-style build <agent> --wait  # learn a draft reply style; status shows its style + substance check (confirm-build when it sampled)
@@ -128,6 +134,7 @@ fruxon escalations desks list|create|attach    # make an escalation desk and att
 fruxon escalations operators list|candidates|add|remove  # who a desk may page (internal people only; --yes-gated remove)
 fruxon working-hours list / create / update <id>  # schedules a desk follows (not the agent's own hours — those go in its prompt)
 fruxon applications list / get / roles # the container that owns agents; `roles` = who holds each roster role
+fruxon applications create --name N    # a new, empty Application; `delete <id> --yes` archives an empty one
 fruxon applications entry-points list [<app>]  # how inbound reaches an agent; no <app> = every claimed address
 fruxon applications entry-points connect/attach/move/disconnect <app>  # wire a doorway (connect registers the provider webhook where it can)
 fruxon applications entry-points get <entry-point>  # one doorway; the Application is optional for a claimed address

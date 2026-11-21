@@ -81,6 +81,9 @@ handoff smooth.
      - **Bearer token**: one param, secret, displayName "Access Token".
      - **OAuth (user)**: typically zero params here — the dashboard
        runs the consent flow.
+     - **OAuth app**: the customer's own OAuth app on their
+       identity server, people signing in to it or the app
+       signing in as itself. See **OAuth app auth** below.
      - **Sign-in token exchange**: the API has no key or static
        token — you POST a login and send back what it returns.
        The params here are the login the user types; the
@@ -202,6 +205,93 @@ handoff smooth.
 
    Your tools then declare NO `Authorization` header, exactly as
    for `BEARER_TOKEN` — see **Placeholders** below.
+
+   ## OAuth app auth
+
+   For an API behind the customer's own identity server (Auth0,
+   Okta, Entra, Keycloak, …). On the auth method set
+   `"type": "O_AUTH2"` and the app in
+   `"authSettings": { "parameters": { ... } }`:
+   - `grant_type` — who signs in:
+     - `authorization_code` (the default): **people sign in**. A
+       person connects an account in the dashboard (or through a
+       credential link), and tools act as that account. Needs
+       `authorization_url` and `token_url`. Keep `use_pkce:
+       "true"`; with it the app may have no client secret.
+     - `client_credentials`: **the app signs in as itself**. Fruxon
+       gets a token with the client ID and secret whenever a tool
+       runs; there is no account to connect, no credential link,
+       and every person using the agent acts as the app. For
+       server-to-server APIs. Needs `token_url`, `client_id` and
+       `client_secret`, and is application level only.
+   - `token_url`, `authorization_url` — https only.
+   - `client_id`; `client_secret` — returned masked (`••••••••`)
+     on every read, and sending the mask back keeps it.
+   - `default_scopes` — a JSON list as a string:
+     `"[\"openid\",\"email\"]"`.
+   - `token_parameters` — extra fields on every token request,
+     as a JSON object string: `"{\"audience\":\"https://api.acme.example\"}"`.
+     They can't replace a field Fruxon sends itself
+     (`grant_type`, `client_id`, `client_secret`, …).
+   - `client_authentication` — `body` (default) or `basic`.
+   - `authorization_parameters`, `revocation_url`, `use_pkce` —
+     people signing in only.
+
+   **The client secret is a secret.** Never write it into a
+   file yourself. A client-credentials method can't be saved
+   without it, so either hand the user the values below to add
+   the method in the dashboard (Edit integration → Authentication
+   methods → OAuth app → "Fruxon signs in as the app"), or write
+   the file with `client_secret` as `"<paste here>"` and have the
+   user fill it in and run `fruxon integrations create` (or
+   `update`) themselves. Never run it with the placeholder: it
+   would be saved as the secret.
+
+   Auth0 machine-to-machine app (the API's identifier goes in
+   `audience`):
+   ```json
+   {
+     "id": "acme_m2m",
+     "displayName": "Acme API (app)",
+     "type": "O_AUTH2",
+     "testPath": "/v1/health",
+     "authSettings": {
+       "parameters": {
+         "grant_type": "client_credentials",
+         "token_url": "https://acme.eu.auth0.com/oauth/token",
+         "client_id": "<client id>",
+         "client_secret": "<paste here>",
+         "token_parameters": "{\"audience\":\"https://api.acme.example\"}"
+       }
+     }
+   }
+   ```
+
+   Entra app registration calling Microsoft Graph with
+   application permissions (one `.default` scope):
+   ```json
+   {
+     "id": "graph_app",
+     "displayName": "Northwind Entra app",
+     "type": "O_AUTH2",
+     "testPath": "/v1.0/organization",
+     "authSettings": {
+       "parameters": {
+         "grant_type": "client_credentials",
+         "token_url": "https://login.microsoftonline.com/<tenant id>/oauth2/v2.0/token",
+         "client_id": "<application (client) id>",
+         "client_secret": "<paste here>",
+         "default_scopes": "[\"https://graph.microsoft.com/.default\"]"
+       }
+     }
+   }
+   ```
+
+   A client-credentials method's config needs no connect step:
+   the user adds the config in the dashboard and presses Test,
+   which fetches a token (and calls `testPath` with it when set),
+   or checks it with `fruxon integrations verify`. Your tools
+   declare NO `Authorization` header, as for any OAuth method.
 
 4. **Create the integration.**
    ```

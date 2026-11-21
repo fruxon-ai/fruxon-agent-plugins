@@ -148,6 +148,16 @@ does NOT check that a tool's `integrationConfigId` actually matches a
 slot. A wrong/typo'd config id therefore deploys fine and only fails
 at run time. See `fruxon-build-agent` for a complete example body.
 
+Nor does it check that an **OAuth** config (Gmail, Sheets, Outlook…)
+has an account linked. A published one with nobody signed in — or
+whose grant was revoked or expired — fails the first tool call with
+"OAuth credentials are not configured for this integration".
+`fruxon agents draft validate <agent> --online` flags it as an error
+(`oauth_account_not_linked` / `oauth_grant_ended`), `agents check`
+warns under *Integration accounts*, and `integrations configs list`
+marks the row unhealthy. Fix: `fruxon integrations connect
+<integration> --config <id>` mints the sign-in link.
+
 ## Common pitfalls
 - Putting `web_search` in `definition.tools` instead of
   `provider.builtInTools` — resolution fails because there's no

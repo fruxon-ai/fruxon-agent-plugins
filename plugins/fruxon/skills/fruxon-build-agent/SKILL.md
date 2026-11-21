@@ -26,7 +26,9 @@ revision from it.
    - `fruxon applications list` — the Application that will own the
      agent. Every agent belongs to exactly one and `agents create`
      requires its id (`networkId`); the workspace default is used when
-     you don't pass `--application`.
+     you don't pass `--application`. For a new one, `fruxon applications
+     create --name <name> -o json` prints its `id` — create it before the
+     agent, since an agent can't be moved into it from the CLI.
    - `fruxon integrations list` — the integration catalog. Filters:
      `--has-configs` (only *connected* ones — what you can actually
      wire today), `--has-triggers` (declares a trigger),

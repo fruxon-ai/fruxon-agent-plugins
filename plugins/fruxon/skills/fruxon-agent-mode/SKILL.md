@@ -2,7 +2,7 @@
 name: fruxon-agent-mode
 displayName: Read fruxon's output and recover from errors
 description: >
-  The fruxon CLI's machine contract: what its exit codes (2, 10-16)
+  The fruxon CLI's machine contract: what its exit codes (2, 10-17)
   mean, the {"error":{...}} envelope on stderr, commands that refuse
   without --yes (exit 16), and the JSON / NDJSON shapes that `agents
   draft run`, `agents sandbox stream`, `agents sandbox test`, and
@@ -73,6 +73,7 @@ Every failure classifies into one of these:
 | 14 | `server_error` | 5xx, mid-stream server failure |
 | 15 | `network_error` | Couldn't reach the API |
 | 16 | `interactive_required` | A blocking prompt was hit in agent mode |
+| 17 | `run_failed` | The request went through, but the agent run it started FAILED partway (`agents draft run`). The envelope's `message` names the failing step and its error; don't retry blindly — fix what the step says. |
 | 141 | — | stdout's reader left early (`fruxon describe \| head`): 128 + SIGPIPE, like any Unix tool. No envelope, no crash report — nothing went wrong. |
 
 A driver branching retry/abort decisions should match on these
@@ -291,6 +292,22 @@ don't infer from `result` shape. The `done` record carries the
 | `done` | Terminal | `record_id`, `session_id`, `duration_ms`, costs (incl. `cache_write_cost`, `web_search_cost`), `provider_reported_cost`?, `agent_revision` |
 | `error` | Terminal on failure | `message`, `code`? |
 
+**A run that FAILED partway** still ends with `done`. The CLI reads the
+run's status from its execution record and, when it is FAILED, adds
+`status: "failed"`, `error` and `failed_step` (`name`, `type`, from the
+trace) to `done`, prints the `run_failed` envelope on stderr and exits
+`17`:
+
+```json
+{"type":"done","agent":"my-agent","record_id":"rec-99","session_id":"sess-1",
+  "status":"failed","error":"OAuth credentials are not configured for this integration.",
+  "failed_step":{"name":"Send email","type":"TOOL"}}
+```
+
+`--output json` (non-streamed) carries `status` (`COMPLETED`,
+`WAITING_FOR_ASYNC`, `FAILED`, …) and `error` on every run, plus
+`failedStep` on a failed one, and exits `17` the same way.
+
 Cost-breakdown fields on `usage`/`done` are additive: backends that
 don't track a bucket omit the key, so treat a missing field as 0.
 `provider_reported_cost` is the exception — it's omitted when the
@@ -431,8 +448,8 @@ the server's response so you don't need a follow-up GET. Highlights:
   reply, `FAILED` or `WAITING` without one) and `turn`
   (`started_at`, `ended_at`, `execution_record_id` — each only when
   known). Wait for a test started elsewhere by watching its chat until the
-  state leaves `RUNNING`; on `FAILED`, read the run via its
-  `execution_record_id`.
+  state leaves `RUNNING`; on `FAILED`, `fruxon agents tests show <agent>
+  <chat>` names the failing step and its error on stderr.
 - `fruxon agents tests list -o json` — each chat carries the same `state`
   (always) and `turn` (unless `IDLE`), in the server's camelCase.
 
