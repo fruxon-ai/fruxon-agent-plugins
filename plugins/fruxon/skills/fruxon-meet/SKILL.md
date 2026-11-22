@@ -72,6 +72,8 @@ fruxon integrations triggers <integration>  # event types (+ payload paths) an i
 fruxon integrations configs list / get / update / publish <integration>  # saved credentials; update edits the draft, publish makes it live
 fruxon integrations configs create <integration> --simulated  # no credentials yet: sandbox runs answered from a simulated store (configs sandbox schema/generate/import/…)
 fruxon tools list <integration> / create
+fruxon records types list / get / validate / create / update / delete  # an Application's typed tables; validate checks a definition with no request
+fruxon records upsert / list / get / count / sum / delete <type>  # its rows: --create-only, --where 'price<20', --group-by; off in some cells (404)
 fruxon assets create/list/get/wait/delete  # the indexed RAG assets an agent's assetConfig attaches
 fruxon assets replace-file <a> --file …  # new contents for an uploaded file, same id: agents using it read the new file
 fruxon assets search/documents/chunks <a>  # what the INDEX holds — distinct from the authored corpus below
@@ -81,6 +83,7 @@ fruxon knowledge-bases usage <kb>      # whether agents search it: searches per 
 fruxon knowledge-bases notices / notice / post-notice / edit-notice / extend-notice / withdraw-notice <kb>  # time-boxed notices (an outage, a known bug) every agent is given next turn; no publish
 fruxon knowledge-bases documents / document / add-document / edit-document <kb>  # the articles themselves
 fruxon knowledge-bases review-queue / revisions / evidence <kb>  # what needs a human, who changed what, where it came from
+fruxon knowledge-bases review-approve / review-reject <kb> <doc>…  # decide queue drafts as the console does; approve refuses answer-needed placeholders
 fruxon knowledge-bases correct <kb> <doc> -i "what is wrong"  # let the editor agent fix it; it MAY decline, which writes nothing
 fruxon knowledge-bases consolidate <kb>  # queue a report of near-duplicate clusters; a standalone pass NEVER merges
 fruxon knowledge-bases apply <kb> <run> --cluster <id>  # merge the clusters you accepted from that report (--all for every one)

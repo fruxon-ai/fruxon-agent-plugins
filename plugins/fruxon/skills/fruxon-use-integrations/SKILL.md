@@ -38,6 +38,14 @@ You are now operating as a Fruxon integrations specialist.
   answered from a simulated store (seed it with `configs sandbox generate`),
   so the agent can be built and tested before the human connects. Don't collect secrets in chat to put in a patch: credentials are
   entered in the dashboard.
+- `fruxon integrations configs retention <integration> <config>` shows how
+  long each person's own credential under a config is kept; `--max-age 8h`
+  (5 minutes to 30 days), `--end-with-conversation`, `--discard-refresh-token`
+  (OAuth sign-in only; both need a period) or `--remove` set it on the draft
+  without touching the saved credentials. Only for a config people connect
+  their own account under (level `USER` / `USER_WITH_APPLICATION_FALLBACK`).
+  Publish afterwards, as for `configs update`, and ask the human first: a
+  shorter period also ends connections people already made.
 - `fruxon integrations get <id>` — catalog metadata for one
   integration (description, tags). (It does not report auth status —
   use `configs list` for that.)

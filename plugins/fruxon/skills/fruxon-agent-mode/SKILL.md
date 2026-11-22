@@ -101,6 +101,14 @@ line for that request. If you tell the human the platform failed (exit
 also kept in `<config dir>/last-failure.json` (no arguments or option
 values in it).
 
+`server_code` is present when the server refused with a machine-readable
+reason of its own, passed through unchanged: `record_key_taken`,
+`record_precondition_failed`, `not_linkable`. `code` says which *kind* of
+failure it was (`conflict`); `server_code` says which one, so branch on it
+when a command documents its codes. `field` is present when the refusal is
+about one request field: for a refused record value, the record field's key
+(or `parentId`). Fix that value and retry; the message is for people.
+
 `feedback` is present on a server error (exit 14): the command that
 reports it, `fruxon feedback "<what you were doing>"`. A crash
 (`internal_error`) puts the same command, with its `--crash-log`, in
@@ -144,6 +152,7 @@ the bypass flag.
 | `participants unbind` (no --yes) | Pass `--yes` — removes the participant from the agent's consult roster. |
 | `consult-pins delete` (no --yes) | Pass `--yes` — removes the deterministic routing override. |
 | `knowledge-bases withdraw-notice` (no --yes) | Pass `--yes` — **but only on the human's say-so.** Agents stop being given the notice on their next turn, and each conversation that was given it is told there that it ended. A notice that already ended is reported and nothing is sent. |
+| `knowledge-bases review-approve` / `review-reject` (no --yes) | Pass `--yes` — **but only on the human's say-so.** With auto-publish on, an approval reaches agents within minutes. |
 | `knowledge-bases archive` / `delete` / `apply` / `delete-document` / `correct`, `knowledge-bases source sync` / `resume` / `fork` / `delete` (no --yes) | Pass `--yes`. `delete` and `delete-document` cannot be undone; `archive` is the reversible path for a base. |
 
 ## Workspaces — one key each, named per command
