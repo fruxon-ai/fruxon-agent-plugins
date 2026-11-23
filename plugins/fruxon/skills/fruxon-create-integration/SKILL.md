@@ -106,6 +106,34 @@ handoff smooth.
      with a `testPath` needs `baseUrl` here — that is what the
      probe path hangs off.
 
+   ## No-credentials integration (code tools only)
+
+   For code tools that only work on data the agent passes in —
+   parsing, scoring, reshaping — there is nothing to authenticate.
+   Declare no auth method at all:
+   ```json
+   {
+     "id": "custom_incident_utils",
+     "displayName": "Incident utils",
+     "configMetadata": { "authMetadata": [] }
+   }
+   ```
+   `"authMetadata": []` is the shape the server accepts. Don't
+   add a method of `"type": "NONE"` — it is refused. Leave
+   `testPath` out; there is nothing to probe.
+
+   Such an integration **still needs a config** before an agent
+   can use its tools: an agent binds a tool through a config, and
+   with no credentials there is no link for the user to open, so
+   you create and publish it yourself:
+   ```
+   echo '{"displayName":"Default","parameters":{}}' \
+     | fruxon integrations configs create custom_incident_utils --file - -o json   # note the configId
+   fruxon integrations configs publish custom_incident_utils <config-id> --yes
+   ```
+   Skip the handoff in step 7 — there is nothing for the user to
+   connect.
+
    ## Token exchange auth
 
    For an API whose auth is "POST a login, read a token out of
@@ -311,11 +339,20 @@ handoff smooth.
      functions), `REVERSIBLE` (write that can be undone), or
      `IRREVERSIBLE` (sends mail, charges money). Note: the enum
      is reversibility-flavored, NOT CRUD-flavored — there is no
-     `WRITE`. Defaults to `READ_ONLY` when omitted.
+     `WRITE`. Defaults to `READ_ONLY` when omitted. Only a
+     `READ_ONLY` tool can be marked `safeToRepeat` on an agent
+     (a retry after a lost result) — the agent's revision is
+     refused otherwise. Declare `READ_ONLY` explicitly on any
+     pure-function code tool you want repeated.
    - `parametersMetadata[]` — inputs the agent passes when
-     calling the tool. Each has `name`, `displayName`,
+     calling the tool. Each has `name`, `type`, `displayName`,
      `description`, and optional `required`, `secret`,
-     `defaultValue`.
+     `defaultValue`. **Every parameter needs a `type`**
+     (`STRING`, `INTEGER`, `FLOAT`, `BOOLEAN`, `JSON`, … — the
+     full list is in `tools create --schema`). An untyped
+     parameter saves fine but fails every agent run that has
+     the tool: "Unspecified is not supported as an LLM tool
+     parameter".
 
    ## Placeholders (CRITICAL)
 
@@ -362,7 +399,7 @@ handoff smooth.
        }
      },
      "parametersMetadata": [
-       {"name": "visibility", "description": "all|public|private"}
+       {"name": "visibility", "type": "STRING", "description": "all|public|private"}
      ]
    }
    ```
@@ -384,7 +421,7 @@ handoff smooth.
          "resultType": "STRING"
        }
      },
-     "parametersMetadata": [{"name": "diff", "required": true}]
+     "parametersMetadata": [{"name": "diff", "type": "STRING", "required": true}]
    }
    ```
    Parameters are injected as named Python variables at the
@@ -392,6 +429,34 @@ handoff smooth.
    no `kwargs` dance). Assign to `result` to return data.
    Optional `packages: ["requests", ...]` installs PyPI deps
    into the sandbox; `timeoutSeconds` is 1–120 (default 60).
+
+   **How values arrive.** Each value is typed by what it looks
+   like, not by the parameter's declared `type`:
+   - `true` / `false` / `null` → `True` / `False` / `None`.
+   - A number → `int` or `float`.
+   - Valid JSON starting with `{` or `[` → an already-parsed
+     `dict` / `list`. Don't `json.loads()` it again — that
+     raises `TypeError`.
+   - Anything else → `str`.
+   So a `STRING` parameter the agent fills with `"42"` arrives
+   as the int `42`. Write the script to accept either
+   (`str(x)`, `isinstance(x, dict)`) where it matters.
+
+   **Don't build a tool that runs model-written Python.** A
+   code tool whose script `exec()`s a parameter adds nothing
+   over the built-in `code_executor__execute` tool, which the
+   agent can already be given: it runs the model's Python in
+   the same sandbox, and it records the tool calls the script
+   makes in the run's trace. Write a custom code tool when the
+   *code* is fixed and only the data varies.
+
+   **Changing a code tool.** `tools update` on a code tool
+   doesn't take effect yet (F-063, being fixed on the server).
+   Until then, delete and recreate it:
+   ```
+   fruxon tools delete <integration-id> <tool-id> --yes
+   fruxon tools create <integration-id> --file ./<tool>.json
+   ```
 
 6. **Create each tool.**
    ```
@@ -480,6 +545,8 @@ purpose (audit + intentional secret-minting).
 - Hardcoding the secret in `apiTool.headers` instead of using a
   `{auth.token}` placeholder. The secret should never be in
   the integration definition; it lives in the config.
+- A tool parameter with no `type`. It saves, then every agent
+  run that has the tool fails before the first model call.
 - Forgetting `"secret": true` on auth parameters — dashboard
   won't mask the input field.
 - Authoring tools before the integration exists (server returns

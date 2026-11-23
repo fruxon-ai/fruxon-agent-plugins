@@ -579,6 +579,20 @@ A step's output is rarely the mystery. The mystery is the state it read.
   agent that conducts it, so `agents topics messages <desk> <topic>` 404s —
   a current server names the owner in that 404. To find every item a value
   landed on, `ledger items <trigger-id> --where destination=SKIP`.
+- **A form question nobody seems to answer: read where each row stands.**
+  On a batch asked as a form, `--answers` also carries `form.openedAt`
+  (when the person first opened the *current* link; `null` while they have
+  not) and, per row, `form.status` — `WAITING`, `HELD` (sent with an answer
+  that is not on the list, waiting for the agent beside the form to check
+  it), `ANSWERED`, `CLOSED` — with `form.draft` when something is saved:
+  `text` as the person reads it, the raw `value`, `suggested` (the agent
+  beside the form put it there and the person has not sent it), `held` and
+  `savedAt`. Rows stuck `HELD` are the agent's to check, not the person's.
+  A link never opened may never have arrived: `fruxon triggers ledger
+  resend-form-link <trigger-id> <batch>` sends a new one with the question
+  (the old one stops working, drafts are kept). It exits 13 `NOT_OPEN`, 17
+  `FAILED` (the channel refused — and the old link is dead too) or 18
+  `TOO_SOON` (the question changed in the last 5 minutes; `retryAfter`).
 - **A READY item at a batch stage may be gathering, not stuck.** A stage with
   a `batch` block runs its items in groups, and an item waits READY until its
   group closes — full, its oldest item has waited the window, or nothing

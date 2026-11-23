@@ -39,8 +39,8 @@ revision from it.
      `tenantConfigId` points at. None yet (the integration isn't
      connected)? `fruxon integrations connect <integration>` creates the
      config and prints a link: give it to the user, who signs in to Fruxon
-     and either types the API key, token or password (Stripe, most REST
-     APIs) on a Fruxon page, which tests it and publishes the config, or,
+     and either types the credential (an API key, token, password, or a
+     custom method's fields; Stripe, most REST APIs) on a Fruxon page, which tests it and publishes the config, or,
      for an OAuth integration (Gmail, Google Sheets…), signs in to the
      provider, and the account is connected and the config published
      (`--scope` for what to ask; `authorize` is the same for OAuth).
@@ -721,7 +721,9 @@ fruxon agents sandbox turn "$S" --as <participant> --text "Can I book Tuesday mo
 
 Writes the agent makes land in the store too, so the next turn sees them.
 `sandbox snapshot --name …` saves a state and `sandbox restore` returns to
-it; `sandbox reset --yes` empties it. In a scenario file (`agents sandbox
+it; `sandbox reset --yes` empties it. Re-importing ids the store already
+holds exits 13 naming them: reset first, or `sandbox import --mode upsert`
+to overwrite them. In a scenario file (`agents sandbox
 test`), a `seed` setup step does step 2 for you:
 
 ```yaml

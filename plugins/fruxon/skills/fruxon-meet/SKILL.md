@@ -120,7 +120,8 @@ fruxon triggers ledger redrive-many / ignore-many <t>  # the same over a selecti
 fruxon triggers ledger exclusions <t>   # every reason items were set aside, with counts — the list --ignore-reason is picked from
 fruxon triggers ledger redrive-many <t> --ignore-reason "<recorded reason>"  # undo the exclusions one revised instruction made
 fruxon triggers ledger batches <t> --open-only  # what it is waiting on a human for; read `delivery` — UNDELIVERABLE means nobody was asked
-fruxon triggers ledger batches <t> --answers <batch>     # what a question was answered with: what the person gave beside what was handed back
+fruxon triggers ledger batches <t> --answers <batch>     # what a question was answered with: what the person gave beside what was handed back; a form's rows say where they stand and what is saved
+fruxon triggers ledger resend-form-link <t> <batch>      # send the person a new link to a form question (messages them; --yes-gated; exits 13/17/18 when it didn't send)
 fruxon triggers ledger batches <t> --transcript <batch>  # the conversation it was asked in, read under the agent that owns it
 fruxon triggers ledger items <t> --where destination=SKIP  # items by what a stage wrote into `data` (`!=` too, repeatable)
 fruxon triggers ledger gathering / batch-runs <t>  # a batch stage: what each group waits on, and the runs over groups (cancel-batch-run, --yes-gated)

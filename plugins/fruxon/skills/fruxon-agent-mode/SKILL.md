@@ -2,7 +2,7 @@
 name: fruxon-agent-mode
 displayName: Read fruxon's output and recover from errors
 description: >
-  The fruxon CLI's machine contract: what its exit codes (2, 10-17)
+  The fruxon CLI's machine contract: what its exit codes (2, 10-18)
   mean, the {"error":{...}} envelope on stderr, commands that refuse
   without --yes (exit 16), and the JSON / NDJSON shapes that `agents
   draft run`, `agents sandbox stream`, `agents sandbox test`, and
@@ -73,7 +73,8 @@ Every failure classifies into one of these:
 | 14 | `server_error` | 5xx, mid-stream server failure |
 | 15 | `network_error` | Couldn't reach the API |
 | 16 | `interactive_required` | A blocking prompt was hit in agent mode |
-| 17 | `run_failed` | The request went through, but the agent run it started FAILED partway (`agents draft run`). The envelope's `message` names the failing step and its error; don't retry blindly — fix what the step says. |
+| 17 | `run_failed` | The request went through, but what it started FAILED: the agent run, partway (`agents draft run`), or the message carrying a new form link (`triggers ledger resend-form-link`, outcome `FAILED`). The envelope's `message` names the failing step and its error, or what the channel said; don't retry blindly — fix what it says. |
+| 18 | `retry_later` | Refused for now, and the server said when to try again: `triggers ledger resend-form-link` within 5 minutes of the question changing (`TOO_SOON`). The `message` names the time and `-o json` carries it as `retryAfter`; wait until then, then retry. |
 | 141 | — | stdout's reader left early (`fruxon describe \| head`): 128 + SIGPIPE, like any Unix tool. No envelope, no crash report — nothing went wrong. |
 
 A driver branching retry/abort decisions should match on these
@@ -144,6 +145,7 @@ the bypass flag.
 | `agents memory forget-subject` (no --yes) | Pass `--yes` — it irreversibly deletes a subject's memories (GDPR forget). |
 | `agents memory reset-sandbox` (no --yes) | Pass `--yes` — it deletes the agent's sandbox-realm memories (live ones are kept). |
 | `triggers fire` (no --yes) | Pass `--yes` — it runs the bound agent(s) now (cost + side effects). |
+| `triggers ledger resend-form-link` (no --yes) | Pass `--yes` — **but only on the human's say-so.** It messages the person the question again with a new link, and the link they have stops working. Each outcome but `SENT` has its own exit: `NOT_OPEN` 13, `FAILED` 17, `TOO_SOON` 18 (wait until `retryAfter`). |
 | `triggers ledger walk` (no --yes) | Pass `--yes` — every step is a paid model run on the agent's test budget (up to `--max-steps`, default 10). It writes nothing; read `stopped.code` in the JSON, since it exits 0 whenever it ran. |
 | `triggers delete` / `unbind` (no --yes) | Pass `--yes` — removes the trigger / its agent wiring. |
 | `integrations configs publish` (no --yes) | Pass `--yes` — **but only on the human's say-so.** Every tool call that resolves the config switches to the new revision immediately. |
