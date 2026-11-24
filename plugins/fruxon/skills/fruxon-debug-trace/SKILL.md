@@ -21,6 +21,11 @@ saw, not just its status.
 > all — are a different job. Go to `fruxon-build-agent` ("Common
 > pitfalls") for those, and `fruxon-agent-mode` for the exit-code and
 > error-envelope contract.
+>
+> **`--yes` is the human's confirmation, not yours.** A command shown here
+> with `--yes` deletes, spends, sends, or changes something live: tell the
+> human what it will do and add `--yes` only once they agree
+> (`fruxon-agent-mode`, "Interactive guards").
 
 ## Workflow
 
@@ -43,7 +48,7 @@ line isn't enough.
 ```
 fruxon agents executions list <agent>                    # newest-first
 fruxon agents executions list <agent> -s FAILED -n 50
-fruxon agents executions list <agent> --origin TEST      # your draft runs
+fruxon agents executions list <agent> --origin TEST      # your draft and sandbox runs
 fruxon agents executions list <agent> --since 2026-08-05 --until 2026-08-06
 ```
 
@@ -119,7 +124,27 @@ Statuses, mirroring the backend's `AgentExecutionRecordStatus`:
   `automationId`, the automation's own (`fruxon triggers budget list
   <automationId>`).
 - `--origin` defaults to `PRODUCTION`. Your own `agents draft run`
-  invocations are `TEST`-origin and are invisible until you ask.
+  invocations, and every `agents sandbox turn` / `fire` / `fork --send`,
+  are `TEST`-origin and are invisible until you ask.
+
+**A sandbox turn or fire** names its run on the stream, so you don't have
+to search for it. Under `--wait` (or `sandbox stream`) the text output
+ends with the run's id and the next step:
+
+```
+  turn complete — suspended
+  run 8c0e…
+  Next: fruxon agents executions tree <agent> 8c0e…
+```
+
+In NDJSON, `turn_complete` carries `executionRecordId` and `agentId`, and
+every `tool_call` / `tool_result` carries `executionRecordId`,
+`rootExecutionRecordId` and `agentId`. A run parked on `spawn_subtasks`
+or a consult has an `operationId` on its suspended `tool_result` frame.
+That id names the paused operation (what `sandbox answer` takes), not a
+run, so `executions tree` and `trace` answer it with 404. Pass the
+frame's `rootExecutionRecordId` to `executions tree` to see the sub-tasks
+and their totals.
 
 **From a dashboard URL.** The `id=` query parameter on an executions-tab
 URL is the execution record id (under `group=session`, the root run's
@@ -323,7 +348,8 @@ fruxon agents executions cancel      <agent> <id> --yes   # end the run, termina
   tells you which of the two happened.
 
 > Both verbs confirm first, and under agent mode they refuse without
-> `--yes`. They stop live work on a deployed agent.
+> `--yes`. They stop live work on a deployed agent, so the human decides:
+> say which run and what stops, and add `--yes` only once they agree.
 
 ## 5. Drill into a step
 

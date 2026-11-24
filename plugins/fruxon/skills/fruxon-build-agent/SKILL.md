@@ -12,6 +12,11 @@ You are now operating as a Fruxon agent-build specialist.
 > **A command failed or refused?** `fruxon-agent-mode` has the typed
 > exit codes, the `{"error":…}` envelope, and the `--yes` guards, plus
 > the NDJSON frames `draft run` emits.
+>
+> **`--yes` is the human's confirmation, not yours.** A command shown here
+> with `--yes` deletes, spends, sends, or changes something live: tell the
+> human what it will do and add `--yes` only once they agree
+> (`fruxon-agent-mode`, "Interactive guards").
 
 ## The build loop
 A revision is immutable once created. The *draft* is the
@@ -48,6 +53,13 @@ revision from it.
      secret in chat. `-o json` gives `configId` (pin it once the user says it is
      filled) and `url`; `--param name=value` sets a required connection
      setting such as a subdomain, `--config <id>` fills an existing config.
+     A messaging channel is connected the same way. For WhatsApp,
+     `fruxon integrations connect whatsapp_cloud -o json`: the link's page
+     runs Meta's signup instead of asking for a token (the user picks the
+     number and sets its PIN; `pageNote` in the JSON says so), and
+     publishes the config. Once the user says it is done, put the agent on
+     the number with `fruxon applications entry-points connect <app>
+     --config <configId> --agent <agent>`.
    - `fruxon tools list <integration>` — see tools per integration;
      `fruxon tools get <integration> --tool <tool>` for a tool's parameters
    - `fruxon llm-providers list` — see providers + models
@@ -103,11 +115,11 @@ revision from it.
      tenant that might have more than that, or the id list silently stops
      short. `fruxon triggers list` enumerates the scheduled / event /
      webhook sources that fire agents (these live outside the draft, so this
-     is the only way to see them); `fruxon integrations triggers
+     is the only way to see them); `fruxon integrations events
      <integration>` lists the event *types* an integration can fire on —
      each descriptor's `id` is the `eventType` a `triggers create` body
-     listens for (e.g. `gmail.message.received`), plus the `payloadFields`
-     (dotted paths like `event.from` / `event.subject`) a binding's
+     listens for (e.g. `google_gmail.message.received`), plus the `payloadFields`
+     (dotted paths like `payload.from` / `payload.message_attributes.subject`) a binding's
      `parameterMappings` map onto the agent's entry params, so you wire an
      inbound-event trigger from real ids instead of guesses;
      `fruxon applications entry-points list <app>` shows how inbound
@@ -186,7 +198,8 @@ revision from it.
    --online` also surfaces the `consult_unwired` / `approver_slot_undeclared`
    warnings pre-deploy.)
 9. **Clean up**: `fruxon agents draft discard <agent> --yes` drops the
-   working copy once it has been promoted to a revision.
+   working copy once it has been promoted to a revision. Offer it; run it
+   once the human agrees.
 
 Iterate with `fruxon agents draft status` (local vs server sync
 state) and `draft undo` / `redo` / `reset` (server-side history).
@@ -317,6 +330,19 @@ it from your app via the SDK (`FruxonClient.stream` / `execute`).
 > conversational agent: a draft run is not a conversation, so the agent is not
 > offered conversation tools such as `chat.stay_silent`, and a reply it gives
 > there can be silence in the real chat.
+>
+> **Your own integration's tools answer `{simulated: true, fallback:
+> "no_classification"}` in a sandbox turn?** A sandbox turn may not reach
+> production on a tool's say-so. A tool your workspace wrote (custom, MCP
+> import, code) is not trusted on its `READ_ONLY` label alone, and the
+> config's `sandboxMode: NONE` doesn't change that. Such a call goes to the
+> simulator, and with no classification for the tool the simulator only
+> echoes the arguments back. To let a read run live against the real
+> config, confirm it on the step's binding:
+> `{"toolKey": {...}, "safeToRepeat": true}`. That works only on a tool
+> labelled `READ_ONLY`, and not next to `humanApproval` or `repeatGuard`;
+> `draft validate` checks it. Don't set it on a tool that changes
+> anything: it also lets the call repeat on a retry.
 
 `agents validate` runs the same checks the server applies (missing
 required, unknown parameter, wrong type, invalid option value)
@@ -382,7 +408,9 @@ fruxon agents draft evaluate <agent> --dataset <uuid>   # confirm + run
 **Expensive — every dataset sample runs the draft agent once** (LLM
 tokens + integration calls). The CLI quotes the sample count and
 asks for confirmation; in agent mode (`FRUXON_AGENT_MODE` /
-`CLAUDECODE` / Codex / `CI`) it refuses to run without an explicit `--yes`. Returns an
+`CLAUDECODE` / Codex / `CI`) it refuses to run without an explicit `--yes`.
+Tell the human the sample count and that each sample is a paid run, and
+add `--yes` only once they agree. Returns an
 evaluation run id immediately — wait for the verdict with
 `fruxon agents evaluations get <agent> <run-id> --wait` (`score`,
 `deploymentRecommendation`), and read each sample's comparison with
@@ -423,8 +451,8 @@ for their fields — this is the map of what exists:
 | `memoryConfig` | Persistent notes + memory tools |
 | `assetConfig` | Retrieval over indexed assets — `assetIds` (a knowledge base's `backingAssetId` goes here) |
 | `judge` | Post-run LLM quality check (`judge.rubric.metrics`) |
-| `delegation` | `spawn_subtask` — fan work out to child runs |
-| `network` | Consult / delegate to roster peers |
+| `delegation` | `spawn_subtask` / `spawn_subtasks` — fan work out to parallel copies of this agent (see "Parallel sub-tasks" below) |
+| `network` | Legacy switch for consult / delegate — the tools now follow the bound peers (see "Delegation" below) |
 | `escalation` | `escalate_to_human` — hand the conversation to an operator |
 | `asyncExecution` | Await-vs-background policy for async tools |
 | `outputContract` | Constrain the output to JSON / a JSON schema |
@@ -486,6 +514,65 @@ fruxon working-hours create --name Clinic --tz Asia/Jerusalem \
     --hours "sun-thu 08:00-20:00" --hours "fri 08:00-13:00"
 fruxon escalations set-policy <agent> --working-hours <schedule-id>
 ```
+
+### Starting an agent on an integration event
+
+An `INTEGRATION_EVENT` trigger runs the agent when an integration emits an
+event: a Google Meet transcript is ready, a calendar event changed, a
+Stripe payment succeeded. Every integration's events are a fixed catalog;
+`eventType` must be one of them, and the server refuses anything else
+(a guessed `google_meet.conference.ended` would otherwise never fire).
+
+```bash
+fruxon integrations events google_meet        # what it emits, needs, and its payload fields
+fruxon integrations configs list google_meet  # the connection to listen on (integrationConfigId)
+```
+
+Google Meet emits `google_meet.transcript.ready` (a few minutes after a
+transcribed meeting ends, once the transcript is readable) and
+`google_meet.notes.ready` (a meeting with Gemini notes and no transcript).
+There is no plain "meeting ended" event: an agent that follows up on a
+meeting wants the transcript, and this fires when it can be read. Bind the
+agent to both to cover every meeting once. For meetings scheduled in
+Calendar (not created by Fruxon) the connection needs the "Read your
+existing meetings" scope.
+
+```json
+{
+  "kind": "INTEGRATION_EVENT",
+  "displayName": "Meeting follow-up",
+  "integrationId": "google_meet",
+  "integrationConfigId": "<config id>",
+  "eventType": "google_meet.transcript.ready",
+  "filter": {
+    "match": "ALL",
+    "conditions": [
+      {"path": "payload.message_attributes.duration_minutes", "operator": "GREATER_THAN", "value": "10"}
+    ]
+  },
+  "bindings": [{
+    "agentId": "meeting-follow-up",
+    "parameterMappings": [
+      {"parameterName": "conference_record", "kind": "PAYLOAD_PATH",
+       "value": "payload.message_attributes.conference_record"},
+      {"parameterName": "transcript_name", "kind": "PAYLOAD_PATH",
+       "value": "payload.message_attributes.transcript_name"}
+    ]
+  }]
+}
+```
+
+`fruxon triggers create --file meeting_follow_up.json --application <guid>`.
+The agent then reads the transcript with the Meet tool
+`meet_transcript_read` and the attendees with `meet_participant_list`,
+passing `conference_record`.
+
+Try it before a real meeting: `fruxon integrations events google_meet
+--sample google_meet.transcript.ready > meet.json` writes a payload built
+from the catalog's examples; pass it to `fruxon agents sandbox fire
+<session> --trigger <trigger> --sample-payload meet.json`. The sample's
+ids are examples, so a tool that reads the real transcript will not find
+them: edit in a real `conference_record` to read a real meeting.
 
 ### Skills: what to move out of the prompt
 A skill is loaded only when the model decides its description applies, so
@@ -551,7 +638,43 @@ output. An unresolved placeholder is a hard run-time error.
   `code_interpreter`, `approval_request`) go on
   `definition.provider.builtInTools`, NOT `definition.tools`. Their
   `toolKey.integrationId` is empty string `""` and they don't carry
-  an `integrationConfigId`.
+  an `integrationConfigId`. Which ones exist depends on the provider:
+  the managed Gemini provider (`fruxon_managed_gemini`, the wallet)
+  offers exactly one, `google_search` —
+  `{"toolKey": {"integrationId": "", "id": "google_search"}}`.
+  It combines with function tools (integration tools, `code_executor`)
+  on every current Gemini model (Gemini 3+). Servers that predate the
+  F-038 fix refuse that mix; if a run fails saying built-in and
+  function tools can't be combined, drop one side or move the search
+  into its own step.
+- **Fruxon's code tool, `code_executor` / `execute`** is *not* a
+  provider built-in: it is a Fruxon tool, so it goes on
+  `definition.tools` like an integration tool, with no
+  `integrationConfigId` and no config to create:
+
+  ```json
+  { "toolKey": { "integrationId": "code_executor", "id": "execute" } }
+  ```
+
+  The model sees it as `code_executor__execute` and writes Python 3.12
+  for it (`code`, plus optional `timeout_seconds` 1–120, `packages`,
+  `files`, `output_files`; assign to `result` to return data). Each
+  call runs in a fresh sandbox with **no network** and no credentials;
+  it is `READ_ONLY`, so it fits under any action-type ceiling. Its one
+  way out is the agent's own tools:
+
+  ```python
+  from fruxon import call_tool
+  issues = call_tool("sentry__list_issues", organization_slug="acme", project_slug="checkout-api")
+  result = len(issues.get("items", []))
+  ```
+
+  `call_tool` takes the model-facing name `<integrationId>__<toolId>`,
+  passes every parameter as a string (lists and objects as JSON
+  strings), and only reaches tools attached to **this** agent — a tool
+  behind an approval gate, confirmation, repeat guard or pinned
+  parameters is refused (the agent must call it directly). In a sandbox
+  run those calls go through the simulated configs like any other.
 - **Integration tools** (`slack.send_message`, `github.list_commits`)
   go on `definition.tools`. Their `toolKey.integrationId` is the
   integration id (`"slack"`). Credentials are never inline: a tool
@@ -699,6 +822,134 @@ Binding accepts a name declared on the current revision **or on any
 draft**, so you can declare and bind in one session — the binding stays
 inert until a revision declaring that name deploys.
 
+## Delegation: one agent asks another
+A lead agent can hand a question to another agent in the workspace — a
+**peer** — and carry on with its answer (an incident responder asking a
+log-analyst agent what the logs show). The peer stays its own agent and
+answers with its **deployed** revision, so deploy it first.
+
+**1. Make the peer a participant bound to the lead, on its consult
+roster.** One `AI_AGENT` participant per peer:
+
+```json
+{
+  "kind": "AI_AGENT",
+  "displayName": "Log analyst",
+  "relatedAgentId": "log-analyst",
+  "agentIds": ["incident-responder"],
+  "consultAllowed": true,
+  "description": "Reads application logs and reports what failed, when, and how often.",
+  "expertise": ["logs", "error rates"]
+}
+```
+
+```bash
+fruxon participants create -f log-analyst.json
+fruxon agents roster incident-responder     # the peer must be listed, kind AI_AGENT
+```
+
+`relatedAgentId` is the peer, and `agentIds` binds it to the lead
+(`[lead]`): for an `AI_AGENT` participant the binding alone puts the peer
+on the lead's roster. `consultAllowed` is what matters for a *person*
+advisor; on an AI peer it's ignored, so leaving it in is harmless.
+Nothing checks `relatedAgentId`: a wrong id surfaces
+only as `no_answer` at run time. `displayName`, `description` and
+`expertise` are what the lead's model reads when it picks whom to ask.
+
+**2. `definition.network.enabled`.** The tools follow the bound peers,
+not this flag — a lead with a consult-allowed peer gets them either way.
+Set `"network": {"enabled": true}` anyway: `fruxon agents check` and
+`draft validate --online` use it to warn when the roster is empty.
+
+**3. Say when to ask in the lead's prompt.** The lead gets `ask` (traced
+as `system__ask`) and `delegate_to_participant`, plus a
+`<consult_roster>` block listing its peers. `ask` takes `to` (the peer's
+display name or `participant_id`) and a self-contained `question` — the
+peer sees nothing else, not the conversation or the user.
+
+**What happens at run time.** `ask` **suspends** the lead's run until the
+peer answers; the reply comes back as the tool's result (`outcome`, and
+the answer in `summary`; `no_answer` if the peer failed). Asks run
+**sequentially**: two `ask`s in one turn run one peer after the other,
+each picked up on a ~15 s cycle, so the lead waits for the sum. A peer
+can't `ask` a third agent (depth 1). If the parts don't need to be
+separate agents, use **parallel sub-tasks** instead (next section): two
+independent investigations of one incident took about 10 minutes as two
+sequential asks and under 90 seconds as one `spawn_subtasks` call.
+
+**`delegate_to_participant` doesn't wait.** It returns `delegated` at
+once; the peer answers on a side thread (it sees `question` and
+`context_for_advisor`, not the conversation), and the lead runs again
+with the answer and passes it on in its own voice. Use it when the user
+shouldn't wait in silence; use `ask` when the lead needs the answer to
+reply. At most 3 in flight per conversation; dropped if the conversation
+has ended by the time the answer arrives.
+
+**Conversations only.** Delegation runs end to end when the lead is
+answering a conversation — a channel message, a chat, or a **sandbox
+session**. A plain `:execute` run (`fruxon agents draft run`, the API, a
+schedule or trigger with no conversation) doesn't reach the peer: the ask
+waits until it expires. Test it in the sandbox:
+
+```bash
+S=$(fruxon agents sandbox open incident-responder -o id)
+fruxon agents sandbox turn "$S" --as <your-participant-id> \
+  --text "checkout-api error rate jumped to 8% at 14:05 UTC. What happened?" --await --wait
+# --draft runs the lead's draft; the peer always runs its deployed revision.
+# Resolve a pending ask yourself (the stream's pending_consult frame carries the operationId):
+fruxon agents sandbox answer "$S" <operationId> --run-advisor --yes
+```
+
+Full reference: https://docs.fruxon.com/guides/agents/delegation/
+
+## Parallel sub-tasks: one agent fans out
+`definition.delegation` lets the agent split work into parts that run
+**at the same time**:
+
+```json
+"delegation": { "enabled": true, "deadlineMinutes": 15, "allowNestedSpawn": false }
+```
+
+- The agent gets **`spawn_subtask`** (one part) and **`spawn_subtasks`**
+  (a list of prompts in one call, one array of results back, in order).
+  The platform also adds a prompt block telling it when to fan out.
+- Each sub-task is a **copy of the same agent** — same revision (a
+  sandbox draft run's sub-tasks run that draft), same integration tools —
+  with **no conversation history**: its prompt is all it sees, so make
+  each prompt self-contained and copy ids exactly. It can't `ask`,
+  delegate, escalate or write memory. The copies run **in parallel**, as
+  background runs, and the agent resumes when all have finished.
+- **`deadlineMinutes`**: how long the agent waits for each sub-task before
+  it counts as timed out. 30 by default, clamped to 1 minute–24 hours.
+- **250** sub-tasks per run in total, across all batches. Width per call
+  is your plan's concurrency limit: a wider `spawn_subtasks` is refused
+  (`batch_too_wide`), not trimmed, so send long lists in batches.
+- **`allowNestedSpawn`** (default `false`): a sub-task can't start
+  sub-tasks of its own unless this is on (`nested_spawn_disabled`).
+  Nesting stops at **depth 3** (`max_depth`).
+- Needs a **queued** run: a conversation turn, a sandbox session, a
+  schedule or a trigger. A synchronous API `:execute` call runs inline
+  and the spawn tools refuse (`not_queued`).
+- Sub-tasks can't target a different agent yet.
+
+Tell the agent how to split, e.g. *"Start both investigations in ONE
+`spawn_subtasks` call with two self-contained prompts (service, incident
+time, symptom in each), then write the summary from both results."*
+
+### Which one
+
+| The job | Use |
+|---|---|
+| The same work over many items (each competitor, invoice, document) | Sub-tasks |
+| Independent parts of one job, and the user is waiting | Sub-tasks |
+| A specialist several agents reuse | Delegation (`ask`) |
+| A peer with different guardrails, model or access the lead must not have | Delegation (`ask`) |
+| A specialist with its own evaluations and revisions | Delegation (`ask`) |
+| Hand a question to a specialist and keep talking to the user | Delegation (`delegate_to_participant`) |
+
+You can't have separate specialist agents *and* parallel work in one job
+today. Full guide: https://docs.fruxon.com/guides/agents/sub-agents/#choosing-for-a-real-job
+
 ## Simulate first: integrations with no credentials yet
 You can build and exercise an agent's integration flow before anyone has
 connected the real service. A config with `sandboxMode: SIMULATED` answers
@@ -718,6 +969,38 @@ fruxon integrations configs sandbox entities google_calendar <config> --type eve
 S=$(fruxon agents sandbox open <agent> -o id)
 fruxon agents sandbox turn "$S" --as <participant> --text "Can I book Tuesday morning?"
 ```
+
+**Seeding exact entities: get the `scope` right.** `sandbox import`
+takes `{"entities": [{entityType, entityId, payload, scope?}]}`. The
+`scope` is the values of the type's **scope params**, in the order
+`sandbox schema` lists them, joined with `:` — `sandbox schema` prints
+the shape as `scope key` (e.g. `{organization_slug}:{project_slug}`). A
+type with no scope params takes no scope. The simulator builds the same
+key from each tool call's parameters, so an entity imported under any
+other scope is stored fine and never found:
+
+```bash
+fruxon integrations configs sandbox schema sentry --type issue
+#   issue
+#      scope      organization_slug, project_slug
+#      scope key  {organization_slug}:{project_slug}
+cat > sentry-seed.json <<'JSON'
+{"entities": [
+  {"entityType": "project", "scope": "acme", "entityId": "checkout-api",
+   "payload": {"id": "1", "slug": "checkout-api", "organization": {"slug": "acme"}}},
+  {"entityType": "issue", "scope": "acme:checkout-api", "entityId": "4821",
+   "payload": {"id": "4821", "title": "TimeoutError: payment provider did not answer in 30s",
+               "status": "unresolved", "project": {"slug": "checkout-api"}}}
+]}
+JSON
+fruxon integrations configs sandbox import sentry <config> -f sentry-seed.json
+fruxon integrations configs sandbox entities sentry <config> --type issue --scope acme:checkout-api
+```
+
+`sentry__list_issues` with `organization_slug=acme`,
+`project_slug=checkout-api` now lists issue 4821. If the agent can't
+find a seeded entity, compare its scope with the parameters in the tool
+call's trace.
 
 Writes the agent makes land in the store too, so the next turn sees them.
 `sandbox snapshot --name …` saves a state and `sandbox restore` returns to
@@ -982,7 +1265,7 @@ moves:
   // …provider, prompts, tools as above…
   "assetConfig": {"enabled": true, "assetIds": ["<asset-id>"]},   // knowledge base
   "memoryConfig": {"enabled": true},                              // remembers across runs
-  "network": {"enabled": true},                                   // may consult the roster
+  "network": {"enabled": true},                                   // consult roster (tools follow bound peers)
   "outputContract": {"format": "JSON"}                            // constrain the output
 }
 ```

@@ -11,6 +11,11 @@ description: >
 
 You are now operating as a Fruxon integration-bootstrapping specialist.
 
+> **`--yes` is the human's confirmation, not yours.** A command shown here
+> with `--yes` deletes, spends, sends, or changes something live: tell the
+> human what it will do and add `--yes` only once they agree
+> (`fruxon-agent-mode`, "Interactive guards").
+
 ## Mental model: shape vs instance
 
 Every integration has two layers:
@@ -53,6 +58,43 @@ handoff smooth.
      the existing `integrationId` (skip to step 5).
    Only proceed with a brand-new integration when nothing suitable
    exists.
+
+   **Does the API publish an OpenAPI / Swagger spec?** (Try
+   `/openapi.json`, `/swagger.json`, `/v3/api-docs`, or ask the
+   user.) Then don't hand-write the tools — import them:
+   ```
+   fruxon integrations create --from-openapi https://api.acme.example/openapi.json --out ./acme
+   ```
+   It fetches the spec (URL, file, or `-`; JSON, or YAML with
+   PyYAML installed — a spec on localhost works too, the CLI
+   fetches it), parses it with the dashboard's importer, and
+   writes `./acme/integration.json` + one `./acme/tools/<id>.json`
+   per operation: `{{baseUrl}}` URL templates, path/query params,
+   JSON body templates, `successStatusCodes` from the declared
+   2xx responses, and `actionType` (`READ_ONLY` for GET,
+   `REVERSIBLE` for PUT/PATCH, `IRREVERSIBLE` for POST/DELETE).
+   Nothing is created yet. The integration id defaults to
+   `custom_<slug of info.title>`; `--id custom_acme` overrides it.
+
+   Then **review the folder** before creating anything:
+   - Delete tool files the agent shouldn't have (admin, bulk
+     delete, internal endpoints). Fewer tools = a better agent.
+   - Check each `actionType`: a POST that only searches is
+     `READ_ONLY`; a DELETE you can undo is `REVERSIBLE`.
+   - Fill in what the printed notes ask for: auth methods that
+     didn't map (HTTP bearer/basic map automatically; an API key
+     or OAuth scheme must be added to
+     `configMetadata.authMetadata` per step 3), and `baseUrl`'s
+     `defaultValue` when the spec names no absolute server.
+   - Give terse operations a `description`: the model picks
+     tools by it.
+
+   Then create the integration and every tool in one go:
+   ```
+   fruxon integrations create --from-dir ./acme
+   ```
+   Re-running it skips what already exists, so after fixing a
+   tool file that failed, just run it again. Continue at step 7.
 
 2. **Discover the body shape.** Don't guess fields:
    ```
@@ -450,13 +492,17 @@ handoff smooth.
    makes in the run's trace. Write a custom code tool when the
    *code* is fixed and only the data varies.
 
-   **Changing a code tool.** `tools update` on a code tool
-   doesn't take effect yet (F-063, being fixed on the server).
-   Until then, delete and recreate it:
+   **Changing a code tool.** Edit the JSON and update it in
+   place — the same file shape as create, with the whole
+   `descriptor.codeTool` (code, timeoutSeconds, packages,
+   resultType) and `parametersMetadata`:
    ```
-   fruxon tools delete <integration-id> <tool-id> --yes
-   fruxon tools create <integration-id> --file ./<tool>.json
+   fruxon tools update <integration-id> <tool-id> --file ./<tool>.json
    ```
+   It's a wholesale replace, not a patch: a field you leave out
+   is reset. The stored tool decides its kind, so a body with an
+   API descriptor (or none) is refused with 400 — send
+   `descriptor.codeTool`.
 
 6. **Create each tool.**
    ```
@@ -504,10 +550,14 @@ handoff smooth.
 
 Once the user reports the config is set up, verify:
 ```
-fruxon integrations configs list <integration-id>
-fruxon integrations verify <integration-id>      # tests the auth (needs a testPath)
-fruxon tools run <integration-id> --tool <tool-id> -c <config-uuid>   # end-to-end
+fruxon integrations configs list <integration-id>   # published: true?
+fruxon tools run <integration-id> --tool <tool-id> -c <config-uuid>   # proves the saved credential works
 ```
+
+Pick a READ_ONLY tool for the `tools run` check. `fruxon integrations
+verify` is not a check of a saved config: it takes `--file` with an
+unsaved `VerifyAuthConfigRequest` (the credential itself), which the
+user would have to hand you, so don't use it here.
 
 ## Optional: expose the integration as an MCP server
 
@@ -539,6 +589,21 @@ DO NOT use `fruxon integrations mcp enable` to "look at" the
 state — that's `mcp status`. Enable is the one-shot mint;
 save the output the first time. Rotation is dashboard-only on
 purpose (audit + intentional secret-minting).
+
+## Removing what you built
+
+A test integration, or one built wrong, comes out in two steps — configs
+first, since the server keeps an integration while any config references it:
+```
+fruxon integrations configs list <integration-id>                  # note each config id
+fruxon integrations configs delete <integration-id> <config-id> --yes
+fruxon integrations delete <integration-id> --yes                  # its tools go with it
+```
+Both ask first and need `--yes` in agent mode: name what will be
+deleted and add `--yes` only once the human agrees. A config an agent's
+current revision, a participant or an active trigger still uses is
+refused: point that at another config first. Only delete what you (or
+the user, in this conversation) created — never someone's live config.
 
 ## Common pitfalls
 

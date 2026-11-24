@@ -113,49 +113,65 @@ about one request field: for a refused record value, the record field's key
 `feedback` is present on a server error (exit 14): the command that
 reports it, `fruxon feedback "<what you were doing>"`. A crash
 (`internal_error`) puts the same command, with its `--crash-log`, in
-`report`. See "Reporting a problem" below for when to run it.
+`report`. See "Reporting a problem" below for when to offer it — it sends data to
+Fruxon, so it runs only once the human agrees.
 
 ## Interactive guards — what to do when you hit one
 
 These paths block on a human under normal use; in agent mode they
-fail fast with exit `16` (`interactive_required`) and a hint naming
-the bypass flag.
+fail fast with exit `16` (`interactive_required`) instead of hanging.
+There are two kinds, and they are handled differently.
 
-| Path | Bypass |
+**Missing input.** The command wanted something typed into a prompt or
+an editor. Supply it on the command line and run it again:
+
+| Path | What to pass |
 |---|---|
-| `fruxon agents draft run --edit` | Pass the value via `-p key=value` or `--params file.json` |
-| `fruxon feedback` with no message (it would open an editor) | Pass the message as the argument. If it still exits 16, telemetry is off on this machine and agent reports are off with it: tell the human instead. |
-| `agents draft run --file <other>` replacing an existing server draft (a file other than the pulled one, or `-`) | `--restore` to run it as a one-off and put the current draft back afterwards (what you want for a control/A-B variant), or `--yes` to keep it in the draft. The server draft is what `revisions create` publishes. |
-| `keys delete` (no --yes) | Pass `--yes` |
-| `agents tests delete` (no --yes) | Pass `--yes` |
-| `agents budget delete` (no --yes) | Pass `--yes` |
-| `triggers budget delete` (no --yes) | Pass `--yes` |
-| `conversation-imports confirm` / `agents reply-style import` (no --yes) | Pass `--yes` — it stores customers' chats and deletes the uploaded files. Who is who is checked first; a refusal (exit 12) says which participants need a role. |
-| `agents reply-style confirm-build` (no --yes) | Pass `--yes` — the build reads the rest of the conversations and spends model credits; the estimate shown is the one confirmed. |
-| `agents reply-style activate` / `off` / `delete` (no --yes) | Pass `--yes` — **but only on the human's say-so.** It changes how the agent writes to customers from their next turn. |
-| `conversation-imports delete`, `agents reply-style detach` / `discard` / `cancel-build` (no --yes) | Pass `--yes`. |
-| `agents improvements approve` (no --yes) | Pass `--yes` — **but only on the human's say-so**, with `--expected-base` and `--version` as you showed them the card (`improvements get -o json`: `baseRevision` is not the live one — read `agents get` for `currentRevision`). It deploys a new revision to all traffic; if either value moved, nothing is sent (exit 13). |
-| `agents improvements settings --on` / `--run-on` / `review` (no --yes) | Pass `--yes` — reviewing spends every day, in credits on Fruxon's reviewer model or from the review budget on a model of your own, and `--run-on` changes which; `review` spends it on one conversation now (the refusal names the credits). |
-| `agents improvements compare` / `recheck` (no --yes) | Pass `--yes` — every replayed conversation runs the agent twice and a judge once. `--wait` blocks until the runs end; `results` reads them later. |
-| `agents improvements revise` (no --yes) | Pass `--yes` — the reviewer's model reads every confirmed-worse case, charged to the review budget or in credits on Fruxon's model. |
-| `agents evaluations cancel` (no --yes) | Pass `--yes`. |
-| `agents improvements dismiss` (no --yes) | Pass `--yes`. The reviewer reads the reason in every later review, and `WRONG` is never raised again — pick the reason the human gave. |
-| `agents draft evaluate` (no --yes) | Pass `--yes` — it costs real money |
-| `agents approvals respond` / `cancel` (no --yes) | Pass `--yes` — **but stop first.** This responds to a *human-in-the-loop* gate; a response can run the gated tool. Only auto-`--yes` if the human you're acting for explicitly told you to approve/reject this request. Defaulting to approve defeats the gate. |
-| `agents memory forget-subject` (no --yes) | Pass `--yes` — it irreversibly deletes a subject's memories (GDPR forget). |
-| `agents memory reset-sandbox` (no --yes) | Pass `--yes` — it deletes the agent's sandbox-realm memories (live ones are kept). |
-| `triggers fire` (no --yes) | Pass `--yes` — it runs the bound agent(s) now (cost + side effects). |
-| `triggers ledger resend-form-link` (no --yes) | Pass `--yes` — **but only on the human's say-so.** It messages the person the question again with a new link, and the link they have stops working. Each outcome but `SENT` has its own exit: `NOT_OPEN` 13, `FAILED` 17, `TOO_SOON` 18 (wait until `retryAfter`). |
-| `triggers ledger walk` (no --yes) | Pass `--yes` — every step is a paid model run on the agent's test budget (up to `--max-steps`, default 10). It writes nothing; read `stopped.code` in the JSON, since it exits 0 whenever it ran. |
-| `triggers delete` / `unbind` (no --yes) | Pass `--yes` — removes the trigger / its agent wiring. |
-| `integrations configs publish` (no --yes) | Pass `--yes` — **but only on the human's say-so.** Every tool call that resolves the config switches to the new revision immediately. |
-| `participants delete` (no --yes) | Pass `--yes` — removes the participant from the network. |
-| `capabilities delete` (no --yes) | Pass `--yes` — removes the capability from the routing vocabulary. |
-| `participants unbind` (no --yes) | Pass `--yes` — removes the participant from the agent's consult roster. |
-| `consult-pins delete` (no --yes) | Pass `--yes` — removes the deterministic routing override. |
-| `knowledge-bases withdraw-notice` (no --yes) | Pass `--yes` — **but only on the human's say-so.** Agents stop being given the notice on their next turn, and each conversation that was given it is told there that it ended. A notice that already ended is reported and nothing is sent. |
-| `knowledge-bases review-approve` / `review-reject` (no --yes) | Pass `--yes` — **but only on the human's say-so.** With auto-publish on, an approval reaches agents within minutes. |
-| `knowledge-bases archive` / `delete` / `apply` / `delete-document` / `correct`, `knowledge-bases source sync` / `resume` / `fork` / `delete` (no --yes) | Pass `--yes`. `delete` and `delete-document` cannot be undone; `archive` is the reversible path for a base. |
+| `fruxon agents draft run --edit` | The value via `-p key=value` or `--params file.json` |
+| `fruxon feedback` with no message (it would open an editor) | The message as the argument — and only once the human has agreed to send it (see "Reporting a problem"). If it still exits 16, telemetry is off on this machine and agent reports are off with it: tell the human instead. |
+| `agents draft run --file <other>` replacing an existing server draft (a file other than the pulled one, or `-`) | `--restore` runs it as a one-off and puts the current draft back afterwards (what you want for a control/A-B variant). Keeping it in the draft instead needs `--yes`, which is a confirmation: ask first, since the server draft is what `revisions create` publishes. |
+
+**A confirmation.** The command deletes something, spends money, sends
+a message, or changes what a live agent does, and `--yes` is the
+human's "yes, do it". **Never add `--yes` on your own.** Stop, tell the
+human what the command will do (the table says what to mention; the
+refusal often names counts or credits), and ask. Add `--yes` only after
+they say yes to that action in this conversation. A general "go ahead"
+earlier, or a request to build or test something, is not a yes to
+deleting, spending, or messaging anyone. If they say no, leave it.
+
+| Command | What to tell the human before they confirm |
+|---|---|
+| `keys delete` | The key stops working for whatever uses it. Cannot be undone. |
+| `agents tests delete` | The saved test chat is deleted. |
+| `agents budget delete` / `triggers budget delete` | The spending limit is removed. |
+| `conversation-imports confirm` / `agents reply-style import` | It stores customers' chats and deletes the uploaded files. Who is who is checked first; a refusal (exit 12) says which participants need a role. |
+| `agents reply-style confirm-build` | The build reads the rest of the conversations and spends model credits; the estimate shown is the one they confirm. |
+| `agents reply-style activate` / `off` / `delete` | It changes how the agent writes to customers from their next turn. |
+| `conversation-imports delete`, `agents reply-style detach` / `discard` / `cancel-build` | What is removed or stopped. |
+| `agents improvements approve` | It deploys a new revision to all traffic. Pass `--expected-base` and `--version` as you showed them the card (`improvements get -o json`: `baseRevision` is not the live one — read `agents get` for `currentRevision`); if either value moved, nothing is sent (exit 13). |
+| `agents improvements settings --on` / `--run-on` / `review` | Reviewing spends every day, in credits on Fruxon's reviewer model or from the review budget on a model of their own, and `--run-on` changes which; `review` spends it on one conversation now (the refusal names the credits). |
+| `agents improvements compare` / `recheck` | Every replayed conversation runs the agent twice and a judge once, at a cost. `--wait` blocks until the runs end; `results` reads them later. |
+| `agents improvements revise` | The reviewer's model reads every confirmed-worse case, charged to the review budget or in credits on Fruxon's model. |
+| `agents evaluations cancel` | The running evaluation stops. |
+| `agents improvements dismiss` | The reviewer reads the reason in every later review, and `WRONG` is never raised again — use the reason the human gave. |
+| `agents draft evaluate` | It costs real money; the refusal quotes the sample count. |
+| `agents approvals respond` / `cancel` | This answers a *human-in-the-loop* gate, and a response can run the gated tool. Only the human decides approve or reject; never pick one for them. |
+| `agents memory forget-subject` | It irreversibly deletes a subject's memories (GDPR forget). |
+| `agents memory reset-sandbox` | It deletes the agent's sandbox-realm memories (live ones are kept). |
+| `triggers fire` | It runs the bound agent(s) now, with their cost and side effects. |
+| `triggers ledger resend-form-link` | It messages the person the question again with a new link, and the link they have stops working. Each outcome but `SENT` has its own exit: `NOT_OPEN` 13, `FAILED` 17, `TOO_SOON` 18 (wait until `retryAfter`). |
+| `triggers ledger walk` | Every step is a paid model run on the agent's test budget (up to `--max-steps`, default 10). It writes nothing; read `stopped.code` in the JSON, since it exits 0 whenever it ran. |
+| `triggers delete` / `unbind` | It removes the trigger / its agent wiring. |
+| `integrations configs publish` | Every tool call that resolves the config switches to the new revision immediately. |
+| `participants delete` | It removes the participant from the network. |
+| `capabilities delete` | It removes the capability from the routing vocabulary. |
+| `participants unbind` | It removes the participant from the agent's consult roster. |
+| `consult-pins delete` | It removes the deterministic routing override. |
+| `knowledge-bases withdraw-notice` | Agents stop being given the notice on their next turn, and each conversation that was given it is told there that it ended. A notice that already ended is reported and nothing is sent. |
+| `knowledge-bases review-approve` / `review-reject` | With auto-publish on, an approval reaches agents within minutes. |
+| `knowledge-bases archive` / `delete` / `apply` / `delete-document` / `correct`, `knowledge-bases source sync` / `resume` / `fork` / `delete` | What changes. `delete` and `delete-document` cannot be undone; `archive` is the reversible path for a base. |
+| `records sync confirm-deletes` | It deletes the rows a sync's delete guard held back; the refusal names how many (`heldDeletableNow`). Show them first (`records sync status <type> -o json`, `records list <type> --held`); `records sync dismiss-deletes` keeps them and needs no `--yes`. |
 
 ## Workspaces — one key each, named per command
 
@@ -364,13 +380,20 @@ network behavior, not token-by-token text:
 
 ```json
 {"type":"start","schema_version":1,"stream":"sandbox","session":"s_abc"}
-{"type":"tool_call","toolName":"search","toolCallId":"tc-1","argsSummary":"…"}
-{"type":"tool_result","outcome":"completed","resultSummary":"…"}
+{"type":"tool_call","toolName":"search","toolCallId":"tc-1","argsSummary":"…","executionRecordId":"8c0e…","rootExecutionRecordId":"8c0e…","agentId":"support"}
+{"type":"tool_result","outcome":"completed","resultSummary":"…","executionRecordId":"8c0e…","rootExecutionRecordId":"8c0e…","agentId":"support"}
 {"type":"pending_consult","advisor":"finance","question":"…","operationId":"op_1","advisorIsAgent":true}
 {"type":"reply","text":"Your refund is processed.","at":1719158400000}
-{"type":"turn_complete","outcome":"replied"}
+{"type":"turn_complete","outcome":"replied","executionRecordId":"8c0e…","rootExecutionRecordId":"8c0e…","agentId":"support"}
 {"type":"stopped"}
 ```
+
+`turn_complete` names the turn's run: open its trace with
+`fruxon agents executions tree <agentId> <rootExecutionRecordId>` (or
+`executions trace <agentId> <executionRecordId>`). An `operationId` names a
+paused operation, not a run, and 404s there. A run that failed before
+returning has no `executionRecordId` on `turn_complete`; the CLI fills it
+in from the turn's tool frames when they named one.
 
 It runs until `turn_complete` (outcome `replied` / `silent` /
 `suspended` / `failed`), then exits 0 — a parked run emits
@@ -467,12 +490,18 @@ the server's response so you don't need a follow-up GET. Highlights:
 ## Reporting a problem
 
 `fruxon feedback "<message>"` files a report with Fruxon support. It
-doesn't prompt in agent mode, since nothing is changed or deleted, and
-prints `{"id", "reference", "receivedAt"}` on stdout. Tell the human
-you filed it and give them the `reference` (`fb-3f2a91c0`). Replies go
-to the email on their Fruxon account.
+sends what you write, plus the last failed command (its name, error and
+request id), to Fruxon, so **ask the human first.** Say what the report
+would say, in a sentence or two, and file it only if they agree. Offer
+`--dry-run` when they want to see the exact body; it prints it without
+sending. The command itself doesn't prompt in agent mode, which is why
+the asking is yours to do.
 
-**When to file:** when the platform failed (exit 14, or a crash with
+Once sent, it prints `{"id", "reference", "receivedAt"}` on stdout. Give
+the human the `reference` (`fb-3f2a91c0`). Replies go to the email on
+their Fruxon account.
+
+**When to offer it:** when the platform failed (exit 14, or a crash with
 `internal_error`) and you've already followed the error's hint and
 retried once, or when a command did something other than what its help
 or a guide says. File once per distinct problem, not once per attempt.

@@ -34,10 +34,17 @@ You are now operating with knowledge of how Fruxon works.
   that integration exposes; agents pin them per-revision.
 
 ## The CLI surface — main entry points
+
+> **`--yes` is the human's confirmation, not yours.** A command below
+> marked `--yes` or `--yes-gated` deletes, spends, sends, or changes
+> something live: tell the human what it will do and add `--yes` only
+> once they agree
+> (`fruxon-agent-mode`, "Interactive guards").
+
 ```
 fruxon describe                        # whole CLI tree as JSON (for AI agents)
 fruxon examples [topic]                # curated runnable snippets
-fruxon feedback "<what happened>"      # report a CLI problem to Fruxon support
+fruxon feedback "<what happened>"      # report a CLI problem to Fruxon support (sends it to Fruxon: ask the human first)
 fruxon agents list / get / create --application <app>
 fruxon agents schema <agent>           # typed parameter metadata
 fruxon agents validate <agent> -p k=v  # pre-flight a payload (no execution)
@@ -47,6 +54,8 @@ fruxon agents draft pull / push / status / run / evaluate / undo / redo / reset 
 fruxon agents draft schema             # the draft-body (AgentDraftPayload) JSON Schema — author against it
 fruxon agents draft validate <id>      # lint the definition locally, before push
 fruxon agents draft run <id> -p key=value  # execute the draft (CLI's one run surface)
+fruxon agents activate / deactivate <agent>  # turn traffic on / off; nothing is deleted
+fruxon agents delete <agent> --yes     # disable now, purge after 7 days; undo with agents restore <agent>
 fruxon agents check <agent>            # audit a deployed agent is wired to run end-to-end (trigger/roster/contacts/refs)
 fruxon agents slots list/bind/unbind <agent>  # contacts — the humans notify/ask/escalate reach
 fruxon agents executions list <agent>  # past executions, newest-first (find a record id)
@@ -66,14 +75,17 @@ fruxon agents sandbox open/turn/fire/stream/answer/close  # drive a network sand
 fruxon agents sandbox fork <agent> <message-id> --send --draft --wait  # replay a real bad reply against your draft, same history
 fruxon agents sandbox test <file|dir>  # run scenario e2e tests of an agent (exit 0 pass / 1 fail; --junit)
 fruxon integrations list / create
+fruxon integrations delete custom_<slug> --yes  # a custom integration + its tools; its configs must be deleted first (configs delete)
 fruxon integrations connect <integration>  # create a config + mint a link a human types an API key / token / password in, or signs in to (OAuth)
 fruxon integrations authorize <integration>  # the same, for an integration's OAuth method only
-fruxon integrations triggers <integration>  # event types (+ payload paths) an integration can fire an agent on
-fruxon integrations configs list / get / update / publish <integration>  # saved credentials; update edits the draft, publish makes it live
+fruxon integrations events <integration>  # event types (+ payload paths) an integration can fire an agent on
+fruxon integrations configs list / get / update / publish / delete <integration>  # saved credentials; update edits the draft, publish makes it live
 fruxon integrations configs create <integration> --simulated  # no credentials yet: sandbox runs answered from a simulated store (configs sandbox schema/generate/import/…)
 fruxon tools list <integration> / create
 fruxon records types list / get / validate / create / update / delete  # an Application's typed tables; validate checks a definition with no request
 fruxon records upsert / list / get / count / sum / delete <type>  # its rows: --create-only, --where 'price<20', --group-by; off in some cells (404)
+fruxon records search <type> --query … [--where f=v] [--top-k N]  # a searchable SYNCED type, by meaning; records index status / publish <type> for its index
+fruxon records sync run / status / runs / confirm-deletes / dismiss-deletes <type>  # a SYNCED type's syncs; status shows the open hold, confirm-deletes needs --yes in agent mode
 fruxon assets create/list/get/wait/delete  # the indexed RAG assets an agent's assetConfig attaches
 fruxon assets replace-file <a> --file …  # new contents for an uploaded file, same id: agents using it read the new file
 fruxon assets search/documents/chunks <a>  # what the INDEX holds — distinct from the authored corpus below
