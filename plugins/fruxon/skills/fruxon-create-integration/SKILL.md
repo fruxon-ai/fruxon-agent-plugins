@@ -166,15 +166,18 @@ handoff smooth.
 
    Such an integration **still needs a config** before an agent
    can use its tools: an agent binds a tool through a config, and
-   with no credentials there is no link for the user to open, so
-   you create and publish it yourself:
+   with no credentials there is no link for the user to open.
+   Create the config, then publish it once the user agrees:
    ```
    echo '{"displayName":"Default","parameters":{}}' \
      | fruxon integrations configs create custom_incident_utils --file - -o json   # note the configId
    fruxon integrations configs publish custom_incident_utils <config-id> --yes
    ```
-   Skip the handoff in step 7 — there is nothing for the user to
-   connect.
+   Publishing needs `--yes` in agent mode, and that is the user's
+   confirmation, not yours: tell them the config makes the
+   integration's tools usable by agents in the workspace, and add
+   `--yes` only once they say yes. Skip the handoff in step 7 —
+   there is nothing for the user to connect.
 
    ## Token exchange auth
 
@@ -484,13 +487,9 @@ handoff smooth.
    as the int `42`. Write the script to accept either
    (`str(x)`, `isinstance(x, dict)`) where it matters.
 
-   **Don't build a tool that runs model-written Python.** A
-   code tool whose script `exec()`s a parameter adds nothing
-   over the built-in `code_executor__execute` tool, which the
-   agent can already be given: it runs the model's Python in
-   the same sandbox, and it records the tool calls the script
-   makes in the run's trace. Write a custom code tool when the
-   *code* is fixed and only the data varies.
+   **Parameters carry data, not code.** Write a custom code
+   tool when the script is fixed and only the data varies.
+   Never treat a parameter as code to run.
 
    **Changing a code tool.** Edit the JSON and update it in
    place — the same file shape as create, with the whole
