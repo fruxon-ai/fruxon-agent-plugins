@@ -31,6 +31,17 @@ signals (true if any is set):
 In agent mode the CLI:
 
 - Defaults every `--output` to `json` (humans get `text`)
+- Keeps stdout to the JSON document alone; warnings, notes and hints go to
+  stderr. Parse stdout on its own: `2>&1` mixes those lines in front of
+  the JSON and the parse fails (`Expecting value: line 1 column 6`). A
+  command's warnings are also inside its JSON where it has a `warnings` field
+
+Commands share one shape by verb (the CLI command standard): every `create`
+and `update` takes its body as `--file` (`-` for stdin) and prints that body's
+JSON Schema with `--schema`. An `update` changes only what you send — fields
+left out keep their values — and its flags are shortcuts that win over the
+file. The exceptions say so in their `--help` ("replaces the whole …"): start
+those from the resource's own `get -o json`.
 - Drops banners, spinners, and chrome from stderr
 - Switches `fruxon agents draft run` and `fruxon agents tests watch` to
   newline-delimited JSON on stdout
