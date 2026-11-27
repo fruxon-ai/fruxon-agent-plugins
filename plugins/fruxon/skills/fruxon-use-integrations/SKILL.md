@@ -87,9 +87,10 @@ You are now operating as a Fruxon integrations specialist.
   tool whose `integrationConfigId` isn't a declared slot, a tool that
   omits it where no binding can supply one, a slot id that isn't a
   GUID, and a binding key that disagrees with its slot.
-- `fruxon assets create --file ./docs.pdf -o id` + `fruxon assets wait
-  <id>` — provision a file-backed RAG source before adding it to the
-  definition's `assetConfig.assetIds`. Use `fruxon assets list` / `get` for existing
+- `fruxon assets create --file ./docs.pdf --application <app> -o id` +
+  `fruxon assets wait <id>` — provision a file-backed RAG source, in the
+  agent's Application, before adding it to the definition's
+  `assetConfig.assetIds`. Use `fruxon assets list` / `get` for existing
   assets and `operations` to inspect ingestion progress.
 
 ## The two tool flavors

@@ -197,6 +197,8 @@ Run `fruxon guides show <id>`:
   into an agent.
 - **fruxon-debug-trace** — working out why a run did what it did,
   from its execution trace.
+- **sandbox-scenarios** — the file format `agents sandbox test` runs:
+  setup, steps, responders, assertions, and which revision to run.
 
 ## Guides vs skills (don't conflate)
 - **Guides** (`fruxon guides`) — local CLI-driver playbooks, shipped

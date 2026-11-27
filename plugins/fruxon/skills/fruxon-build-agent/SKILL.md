@@ -85,8 +85,11 @@ revision from it.
      <configId> <requestId>` says `FILLED`. `--param name=value` sets a
      required setting (Bedrock's `region`, Vertex's `project_id` and
      `location`); `--config <id>` fills an existing config
-   - `fruxon assets create --file ./docs.pdf -o id` — create a
-     file-backed knowledge-base (RAG) asset from the CLI. Then run
+   - `fruxon assets create --file ./docs.pdf --application <app> -o id` —
+     create a file-backed knowledge-base (RAG) asset from the CLI. Every
+     asset belongs to one Application: use the agent's (`fruxon agents get
+     <agent>` shows it); a key bound to an Application may leave
+     `--application` out. Then run
      `fruxon assets wait <id>` before wiring it into an agent; ingestion is
      async, and an asset is not searchable until its operation completes.
      `fruxon assets list` / `get <id>` show existing asset ids and
@@ -501,6 +504,7 @@ fruxon access-requests list --agent <agent>                    # who is waiting
 fruxon access-requests approve <id>                            # let one in
 fruxon applications update <app> --unknown-senders PROVISION   # or stop queueing new senders at all
 fruxon agents check <agent>                                    # "Inbound path" fails with no webhook; "Unknown senders" warns
+fruxon integrations configs health whatsapp_cloud <config>    # can the WhatsApp number send? exits 12 when not ("Channel health" row in agents check)
 ```
 
 **Hours live in two places, for two things.** The agent's own opening
@@ -1060,7 +1064,7 @@ Discovering the ids (the CLI can't guess them for you):
 
 ## Providers and models
 - `provider.providerId`: lowercase slug (`anthropic`, `openai`,
-  `google`, `bedrock`, `grok`, `deepseek`).
+  `google`, `bedrock`, `grok`).
 - `provider.model`: discovered, not guessed
   (`fruxon llm-providers models <provider>`). Wrong model strings
   surface as "unsupported model 'X' for provider 'Y'" at create.

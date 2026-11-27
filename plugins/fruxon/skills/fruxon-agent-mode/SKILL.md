@@ -460,6 +460,9 @@ verdict — no stream to parse:
 ```json
 {"passed": false, "total": 1, "passed_count": 0,
  "results": [{"name": "refund-flow", "agent": "support-bot", "passed": false,
+   "revisionPolicy": "PUBLISHED",
+   "turns": [{"step": 1, "kind": "turn", "revisionPolicy": "PUBLISHED", "outcome": "replied",
+              "executionRecordId": "8d1f…", "agentRevision": 3}],
    "assertions": [{"kind": "reply_contains", "passed": true, "detail": ""},
                   {"kind": "no_blocked", "passed": false, "detail": "expected no blocked sends, got ['telegram:123']"}],
    "failures": ["expected no blocked sends, got ['telegram:123']"], "transcript": [/* frames */]}]}
@@ -470,6 +473,16 @@ agent), **12** = a malformed scenario file, **10–15** = couldn't run
 (auth/network — fix the setup). `--junit <file>` writes a JUnit report for CI.
 This is the agent-authored e2e gate: write the file, run one command, branch on
 `passed`.
+
+Steps run the **deployed** revision unless the scenario says `revision: draft`
+(your draft) or `proposal: <card>` (an improvement card's change) — at the top
+level or on one `turn` / `fire` step. Each result's `turns` say which
+`revisionPolicy` every step ran and the `agentRevision` its run executed;
+check them before trusting a pass. Scenario files are strict: an unknown key
+anywhere (a `draft: true`, say) is exit 12 naming the key's path and the
+allowed keys, never silently ignored. The full format — setup blocks,
+responders, every assertion, and the recipe for a throwaway tester the agent
+answers — is `fruxon guides show sandbox-scenarios`.
 
 ### Draft state and `tests watch`
 
@@ -548,6 +561,8 @@ did is `fruxon-debug-trace`'s job. For the rest:
 - **fruxon-use-integrations** — wire existing tools into an agent.
 - **fruxon-debug-trace** — read an execution trace to explain a run
   that failed, hung, or quietly did the wrong thing.
+- **sandbox-scenarios** — the scenario file format `agents sandbox
+  test` runs.
 
 Each assumes the contract documented here: JSON by default, typed exit
 codes, and the error envelope.
