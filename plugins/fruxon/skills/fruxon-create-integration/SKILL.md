@@ -170,7 +170,7 @@ handoff smooth.
    Create the config, then publish it once the user agrees:
    ```
    echo '{"displayName":"Default","parameters":{}}' \
-     | fruxon integrations configs create custom_incident_utils --file - -o json   # note the configId
+     | fruxon integrations configs create custom_incident_utils --file - --application <app> -o json   # note the configId
    fruxon integrations configs publish custom_incident_utils <config-id> --yes
    ```
    Publishing needs `--yes` in agent mode, and that is the user's
@@ -512,13 +512,14 @@ handoff smooth.
    Get the user a link that connects it:
    - **API key, bearer token or username + password** shared by the
      workspace (an APPLICATION-level method):
-     `fruxon integrations connect <integration-id> -o json` creates the
-     config and returns its `configId` and a `url`. The page it opens
+     `fruxon integrations connect <integration-id> --application <app> -o json`
+     creates the config in the Application whose agents will use it (only
+     they can) and returns its `configId` and a `url`. The page it opens
      takes the secret, tests it and publishes the config. Required
      connection settings go in as `--param name=value`.
    - **OAuth** shared by the workspace: the same command,
-     `fruxon integrations connect <integration-id> -o json` (`--scope`
-     for what to ask). Whoever opens the link signs in to the provider,
+     `fruxon integrations connect <integration-id> --application <app> -o json`
+     (`--scope` for what to ask). Whoever opens the link signs in to the provider,
      and the account is connected and the config published.
    - **Per-user credentials** (each person connects their own): nothing
      to fill now; each user is asked on first use.

@@ -42,8 +42,11 @@ revision from it.
    - `fruxon integrations configs list <integration>` — the tenant
      config ids for an integration; a published one is what a slot's
      `tenantConfigId` points at. None yet (the integration isn't
-     connected)? `fruxon integrations connect <integration>` creates the
-     config and prints a link: give it to the user, who signs in to Fruxon
+     connected)? `fruxon integrations connect <integration> --application
+     <app>` creates the config in the agent's Application (only that
+     Application's agents can use it; a messaging installation such as
+     Slack or WhatsApp takes no `--application`: it belongs to the whole
+     workspace) and prints a link: give it to the user, who signs in to Fruxon
      and either types the credential (an API key, token, password, or a
      custom method's fields; Stripe, most REST APIs) on a Fruxon page, which tests it and publishes the config, or,
      for an OAuth integration (Gmail, Google Sheets…), signs in to the
@@ -962,7 +965,7 @@ runs never read it.
 
 ```bash
 # 1. A simulated config, published, no credentials (one step):
-fruxon integrations configs create google_calendar --simulated -o json   # → id
+fruxon integrations configs create google_calendar --simulated --application <app> -o json   # → id
 # 2. Seed the store it answers from (or `sandbox import --file entities.json` — the entity
 #    types, id templates and payload shapes it takes: `fruxon integrations configs sandbox schema google_calendar`):
 fruxon integrations configs sandbox generate google_calendar <config> \

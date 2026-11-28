@@ -34,7 +34,8 @@ You are now operating as a Fruxon integrations specialist.
   `fruxon integrations configs publish <integration> <config> --yes`, which
   every agent using the config picks up on its next call — ask the human
   first. No credential yet? `fruxon integrations configs create
-  <integration> --simulated` publishes a config whose sandbox runs are
+  <integration> --simulated --application <app>` publishes a config, in the
+  agent's Application, whose sandbox runs are
   answered from a simulated store (seed it with `configs sandbox generate`),
   so the agent can be built and tested before the human connects. Don't collect secrets in chat to put in a patch: credentials are
   entered in the dashboard.

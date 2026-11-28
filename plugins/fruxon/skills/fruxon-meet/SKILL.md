@@ -76,11 +76,11 @@ fruxon agents sandbox fork <agent> <message-id> --send --draft --wait  # replay 
 fruxon agents sandbox test <file|dir>  # run scenario e2e tests of an agent (exit 0 pass / 1 fail; --junit)
 fruxon integrations list / create
 fruxon integrations delete custom_<slug> --yes  # a custom integration + its tools; its configs must be deleted first (configs delete)
-fruxon integrations connect <integration>  # create a config + mint a link a human types an API key / token / password in, or signs in to (OAuth)
+fruxon integrations connect <integration> --application <app>  # create a config in an Application + mint a link a human types an API key / token / password in, or signs in to (OAuth)
 fruxon integrations authorize <integration>  # the same, for an integration's OAuth method only
 fruxon integrations events <integration>  # event types (+ payload paths) an integration can fire an agent on
 fruxon integrations configs list / get / update / publish / delete <integration>  # saved credentials; update edits the draft, publish makes it live
-fruxon integrations configs create <integration> --simulated  # no credentials yet: sandbox runs answered from a simulated store (configs sandbox schema/generate/import/…)
+fruxon integrations configs create <integration> --simulated --application <app>  # no credentials yet: sandbox runs answered from a simulated store (configs sandbox schema/generate/import/…)
 fruxon tools list <integration> / create
 fruxon records types list / get / validate / create / update / delete  # an Application's typed tables; validate checks a definition with no request
 fruxon records upsert / list / get / count / sum / delete <type>  # its rows: --create-only, --where 'price<20', --group-by; off in some cells (404)
